@@ -128,6 +128,11 @@ public class UpdateTopicSubCommand implements SubCommand {
             }
             topicConfig.setOrder(isOrder);
 
+            /**
+             * -b 相比 -c 优先
+             * b参数指定在哪个Broker上创建本Topic的Message Queue。
+             * c参数表示在这个Cluster下面所有的Master Broker上创建这个Topic的Message Queue，从而达到高可用性。
+             */
             if (commandLine.hasOption('b')) {
                 String addr = commandLine.getOptionValue('b').trim();
 

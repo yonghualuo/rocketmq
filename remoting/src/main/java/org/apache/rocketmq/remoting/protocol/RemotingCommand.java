@@ -56,6 +56,9 @@ public class RemotingCommand {
     private static volatile int configVersion = -1;
     private static AtomicInteger requestId = new AtomicInteger(0);
 
+    /**
+     * 支持两种序列化类型, 有 JSON 和 ROCKETMQ.
+     */
     private static SerializeType serializeTypeConfigInThisServer = SerializeType.JSON;
 
     static {
@@ -136,6 +139,12 @@ public class RemotingCommand {
         return createResponseCommand(code, remark, null);
     }
 
+    /**
+     * 反序列化
+     *
+     * @param array
+     * @return
+     */
     public static RemotingCommand decode(final byte[] array) {
         ByteBuffer byteBuffer = ByteBuffer.wrap(array);
         return decode(byteBuffer);
@@ -143,12 +152,16 @@ public class RemotingCommand {
 
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
         int length = byteBuffer.limit();
-        int oriHeaderLen = byteBuffer.getInt();
-        int headerLength = getHeaderLength(oriHeaderLen);
+        int oriHeaderLen = byteBuffer.getInt(); // 4
+        int headerLength = getHeaderLength(oriHeaderLen); // header长度, int的后24位
 
         byte[] headerData = new byte[headerLength];
         byteBuffer.get(headerData);
 
+        /**
+         * 自定义通信协议
+         * @see markProtocolType(int source, SerializeType type)
+         */
         RemotingCommand cmd = headerDecode(headerData, getProtocolType(oriHeaderLen));
 
         int bodyLength = length - 4 - headerLength;
@@ -183,6 +196,12 @@ public class RemotingCommand {
         return null;
     }
 
+    /**
+     * 取source整型的前8位为序列化类型，后24位为实际长度
+     *
+     * @param source
+     * @return
+     */
     public static SerializeType getProtocolType(int source) {
         return SerializeType.valueOf((byte) ((source >> 24) & 0xFF));
     }

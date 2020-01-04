@@ -164,6 +164,11 @@ public class RocketMQSerializable {
         return cmd;
     }
 
+    /**
+     * 编码格式为, map的[key length, key , value length, value....]
+     * @param bytes
+     * @return
+     */
     public static HashMap<String, String> mapDeserialize(byte[] bytes) {
         if (bytes == null || bytes.length <= 0)
             return null;

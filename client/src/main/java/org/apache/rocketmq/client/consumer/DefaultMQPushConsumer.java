@@ -81,6 +81,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * </p>
      *
      * This field defaults to clustering.
+     * offset，集群时使用broker代存，广播时使用本地文件。
      */
     private MessageModel messageModel = MessageModel.CLUSTERING;
 

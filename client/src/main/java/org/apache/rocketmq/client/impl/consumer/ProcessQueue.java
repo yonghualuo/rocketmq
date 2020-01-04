@@ -35,6 +35,9 @@ import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 import org.slf4j.Logger;
 
 /**
+ *
+ * 队列消费快照
+ *
  * Queue consumption snapshot
  */
 public class ProcessQueue {
@@ -43,7 +46,13 @@ public class ProcessQueue {
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final Logger log = ClientLogger.getLog();
+    /**
+     * 读写锁，控制多线程对TreeMap的访问
+     */
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
+    /**
+     * 保存所有从MessageQueue获取到，但还未处理的消息
+     */
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();

@@ -49,10 +49,15 @@ public class RouteInfoManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    // value为topic对应的Master Broker的个数
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+    // value 为所属的cluster信息，及一个Master和多个Slave的信息
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    // value为一个clusterName的brokerData信息
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    // key为broker地址，value为broker的实时状态信息
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    // 过滤服务器
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -99,6 +104,11 @@ public class RouteInfoManager {
         return topicList.encode();
     }
 
+    /**
+     * 注册broker
+     *
+     * @return
+     */
     public RegisterBrokerResult registerBroker(
         final String clusterName,
         final String brokerAddr,
@@ -131,6 +141,7 @@ public class RouteInfoManager {
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
+                // 注册broker master时
                 if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())

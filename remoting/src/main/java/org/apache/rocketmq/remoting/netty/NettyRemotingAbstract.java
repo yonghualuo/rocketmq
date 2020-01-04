@@ -373,6 +373,7 @@ public abstract class NettyRemotingAbstract {
                         responseFuture.setSendRequestOK(false);
                     }
 
+                    // 异常时
                     responseTable.remove(opaque);
                     responseFuture.setCause(f.cause());
                     responseFuture.putResponse(null);

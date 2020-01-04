@@ -25,6 +25,9 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
  * Offset store interface
+ *
+ * 主要分为本地文件类型和Broker代存的类型两种。
+ * 对 @see DefaultMQPushConsumer来说, 默认是CLUSTERING模式, 使用的是RemotBrokerOffsetStore结构。
  */
 public interface OffsetStore {
     /**

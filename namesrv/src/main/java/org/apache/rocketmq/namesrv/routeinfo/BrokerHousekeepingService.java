@@ -35,6 +35,12 @@ public class BrokerHousekeepingService implements ChannelEventListener {
     public void onChannelConnect(String remoteAddr, Channel channel) {
     }
 
+    /**
+     * channel触发断开的逻辑
+     *
+     * @param remoteAddr
+     * @param channel
+     */
     @Override
     public void onChannelClose(String remoteAddr, Channel channel) {
         this.namesrvController.getRouteInfoManager().onChannelDestroy(remoteAddr, channel);
