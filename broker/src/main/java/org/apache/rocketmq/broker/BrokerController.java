@@ -670,6 +670,7 @@ public class BrokerController {
             this.pullRequestHoldService.start();
         }
 
+        // 启动
         if (this.clientHousekeepingService != null) {
             this.clientHousekeepingService.start();
         }

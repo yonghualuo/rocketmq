@@ -489,6 +489,9 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * netty事件job
+     */
     class NettyEventExecutor extends ServiceThread {
         private final LinkedBlockingQueue<NettyEvent> eventQueue = new LinkedBlockingQueue<NettyEvent>();
         private final int maxSize = 10000;
