@@ -72,10 +72,20 @@ public class RemotingCommand {
         }
     }
 
+    /**
+     * Request：请求操作码，应答方根据不同的请求码进行不同的业务处理。
+     * Response：应答响应码，0表示成功，非0表示各种错误。
+     */
     private int code;
     private LanguageCode language = LanguageCode.JAVA;
     private int version = 0;
+    /**
+     * 相当于requestId
+     */
     private int opaque = requestId.getAndIncrement();
+    /**
+     * 区分是普通RPC，还是onewayRPC
+     */
     private int flag = 0;
     private String remark;
     private HashMap<String, String> extFields;
@@ -346,7 +356,7 @@ public class RemotingCommand {
 
     public ByteBuffer encode() {
         // 1> header length size
-        int length = 4;
+        int length = 4; // 消息总长度
 
         // 2> header data length
         byte[] headerData = this.headerEncode();
@@ -357,6 +367,7 @@ public class RemotingCommand {
             length += body.length;
         }
 
+        // +4 是因为length没有加总长度
         ByteBuffer result = ByteBuffer.allocate(4 + length);
 
         // length
@@ -373,6 +384,7 @@ public class RemotingCommand {
             result.put(this.body);
         }
 
+        // 重置ByteBuffer的position
         result.flip();
 
         return result;

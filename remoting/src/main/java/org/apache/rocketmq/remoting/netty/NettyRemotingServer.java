@@ -62,6 +62,13 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * RPC通信的1+N+M1+M2
+ * 1：一个Reactor主线程，eventLoopGroupBoss。
+ * N：Reactor线程池，eventLoopGroupSelector，3个线程。
+ * M1：N拿到网络数据后，丢给worker线程池，专门处理Netty网络通信相关（包括编码/解码、空闲连接管理、网络连接管理及网络请求处理）。
+ * M2：业务处理线程池。
+ */
 public class NettyRemotingServer extends NettyRemotingAbstract implements RemotingServer {
     private static final Logger log = LoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
     private final ServerBootstrap serverBootstrap;
@@ -389,6 +396,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 拿到解码后的 RemotingCommand 后，根据RemotingCommand.type来判断是request还是response来进行响应处理，
+     * 根据业务请求码封装成不同的task任务后，提交给对应的业务processor处理线程池。
+     */
     class NettyServerHandler extends SimpleChannelInboundHandler<RemotingCommand> {
 
         @Override
@@ -397,6 +408,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 连接管理器，负责捕获新连接、连接断开、异常等事件，然后统一调度到NettyEventExecutor中。
+     *
+     */
     class NettyConnectManageHandler extends ChannelDuplexHandler {
         @Override
         public void channelRegistered(ChannelHandlerContext ctx) throws Exception {

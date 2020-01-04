@@ -40,6 +40,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 消息的物理存储文件
+ * 为了保证CommitLog和CommitQueue的一致性，CommitLog里存储了Consume Queues、Message Key、Tag等所有信息。
+ *
  * Store all metadata downtime for recovery, data protection reliability
  */
 public class CommitLog {
