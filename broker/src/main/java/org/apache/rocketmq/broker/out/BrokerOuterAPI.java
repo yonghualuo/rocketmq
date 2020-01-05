@@ -108,11 +108,12 @@ public class BrokerOuterAPI {
         final boolean oneway,
         final int timeoutMills) {
         RegisterBrokerResult registerBrokerResult = null;
-
+        // 遍历所有NameServer列表
         List<String> nameServerAddressList = this.remotingClient.getNameServerAddressList();
         if (nameServerAddressList != null) {
             for (String namesrvAddr : nameServerAddressList) {
                 try {
+                    // 分别向NameServer注册
                     RegisterBrokerResult result = this.registerBroker(namesrvAddr, clusterName, brokerAddr, brokerName, brokerId,
                         haServerAddr, topicConfigWrapper, filterServerList, oneway, timeoutMills);
                     if (result != null) {
@@ -143,10 +144,15 @@ public class BrokerOuterAPI {
     ) throws RemotingCommandException, MQBrokerException, RemotingConnectException, RemotingSendRequestException, RemotingTimeoutException,
         InterruptedException {
         RegisterBrokerRequestHeader requestHeader = new RegisterBrokerRequestHeader();
+        // broker地址
         requestHeader.setBrokerAddr(brokerAddr);
+        // brokerId，0：Master，1：Slave
         requestHeader.setBrokerId(brokerId);
+        // broker名称
         requestHeader.setBrokerName(brokerName);
+        // 集群名称
         requestHeader.setClusterName(clusterName);
+        // master地址，初次请求时该值为空，slave向NameServer注册后返回。
         requestHeader.setHaServerAddr(haServerAddr);
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.REGISTER_BROKER, requestHeader);
 

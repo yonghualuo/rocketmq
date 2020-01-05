@@ -105,20 +105,29 @@ public class NamesrvStartup {
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
 
+            /**
+             * 初始化controller实例
+             */
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);
             }
 
+            /**
+             * 注册JVM钩子函数
+             */
             Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
                 @Override
                 public Void call() throws Exception {
+                    // 将线程池关闭，及时释放资源。
                     controller.shutdown();
                     return null;
                 }
             }));
-
+            /**
+             * 启动服务器，以便监听Broker、消息生产者的网络请求。
+             */
             controller.start();
 
             String tip = "The Name Server boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
