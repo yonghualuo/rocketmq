@@ -298,6 +298,9 @@ public class MQClientAPIImpl {
         return sendMessage(addr, brokerName, msg, requestHeader, timeoutMillis, communicationMode, null, null, null, 0, context, producer);
     }
 
+    /**
+     * 请求命令是RequestCode.SEND_MESSAGE
+     */
     public SendResult sendMessage(
         final String addr,
         final String brokerName,

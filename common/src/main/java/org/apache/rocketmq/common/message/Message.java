@@ -36,6 +36,15 @@ public class Message implements Serializable {
         this(topic, "", "", 0, body, true);
     }
 
+    /**
+     *
+     * @param topic
+     * @param tags 消息TAG, 用于消息过滤。
+     * @param keys Message索引键，多个用空格隔开，RocketMQ可以根据这些key快速检索到消息。
+     * @param flag
+     * @param body
+     * @param waitStoreMsgOK 消息发送时，是否等消息存储完成后再返回。
+     */
     public Message(String topic, String tags, String keys, int flag, byte[] body, boolean waitStoreMsgOK) {
         this.topic = topic;
         this.flag = flag;
@@ -143,6 +152,10 @@ public class Message implements Serializable {
         return 0;
     }
 
+    /**
+     * delayTimeLevel 消息延迟级别，用于定时消息或消息重试。
+     * @param level
+     */
     public void setDelayTimeLevel(int level) {
         this.putProperty(MessageConst.PROPERTY_DELAY_TIME_LEVEL, String.valueOf(level));
     }

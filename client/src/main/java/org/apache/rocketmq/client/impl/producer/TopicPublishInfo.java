@@ -24,9 +24,12 @@ import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 
 public class TopicPublishInfo {
+    // 是否是顺序消息
     private boolean orderTopic = false;
     private boolean haveTopicRouterInfo = false;
+    // 该主题队列的消息队列
     private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
+    // 每选择一次消息队列，该值会自增1，如果达到Integer.MAX_VALUE, 则重置为0，用于选择消息队列。
     private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
     private TopicRouteData topicRouteData;
 
@@ -66,7 +69,13 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     *
+     * @param lastBrokerName 上一次选择的执行发送消息失败的Broker。
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
+        // 第一次执行消息队列选择时，lastBrokerName为空。
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
         } else {
@@ -76,6 +85,7 @@ public class TopicPublishInfo {
                 if (pos < 0)
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
+                // 跳过上一次失败的Broker
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }
@@ -85,6 +95,7 @@ public class TopicPublishInfo {
     }
 
     public MessageQueue selectOneMessageQueue() {
+        // 自增再取模
         int index = this.sendWhichQueue.getAndIncrement();
         int pos = Math.abs(index) % this.messageQueueList.size();
         if (pos < 0)

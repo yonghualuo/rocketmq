@@ -331,6 +331,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setQueueId(queueIdInt);
 
+        // 如果消息重试次数超过允许的最大重试次数，消息将进入DLQ延迟队列。
         if (!handleRetryAndDLQ(requestHeader, response, request, msgInner, topicConfig)) {
             return response;
         }
@@ -354,6 +355,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             }
         }
 
+        // #pushMessage 进行消息存储。
         PutMessageResult putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
 
         return handlePutMessageResult(putMessageResult, response, request, msgInner, responseHeader, sendMessageContext, ctx, queueIdInt);

@@ -482,6 +482,12 @@ public class MessageDecoder {
         return message;
     }
 
+    /**
+     * 批量消息压缩
+     *
+     * @param messages
+     * @return
+     */
     public static byte[] encodeMessages(List<Message> messages) {
         //TO DO refactor, accumulate in one buffer, avoid copies
         List<byte[]> encodedMessages = new ArrayList<byte[]>(messages.size());

@@ -22,12 +22,19 @@ import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.slf4j.Logger;
 
+/**
+ * 消息失败策略，延迟实现的门面
+ */
 public class MQFaultStrategy {
     private final static Logger log = ClientLogger.getLog();
     private final LatencyFaultTolerance<String> latencyFaultTolerance = new LatencyFaultToleranceImpl();
 
     private boolean sendLatencyFaultEnable = false;
 
+    /**
+     * 根据`currentLatency`本次消息发送延迟，从`latencyMax`尾部向前找到第一个比`currentLatency`小的索引index，如果没有找到，
+     * 返回0。然后根据这个索引从`notAvailableDuration`数组中取出对应的时间，在这个时长内，Broker将设置为不可用。
+     */
     private long[] latencyMax = {50L, 100L, 550L, 1000L, 2000L, 3000L, 15000L};
     private long[] notAvailableDuration = {0L, 0L, 30000L, 60000L, 120000L, 180000L, 600000L};
 
@@ -64,6 +71,7 @@ public class MQFaultStrategy {
                     if (pos < 0)
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    // 验证该消息队列是否可用
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
@@ -94,6 +102,7 @@ public class MQFaultStrategy {
 
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         if (this.sendLatencyFaultEnable) {
+            // 即未来多长的时间内该Broker将不参与消息发送队列负载。
             long duration = computeNotAvailableDuration(isolation ? 30000 : currentLatency);
             this.latencyFaultTolerance.updateFaultItem(brokerName, currentLatency, duration);
         }

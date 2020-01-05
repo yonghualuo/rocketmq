@@ -73,6 +73,7 @@ public class RemotingCommand {
     }
 
     /**
+     * 请求命令编码
      * Request：请求操作码，应答方根据不同的请求码进行不同的业务处理。
      * Response：应答响应码，0表示成功，非0表示各种错误。
      */
@@ -80,19 +81,25 @@ public class RemotingCommand {
     private LanguageCode language = LanguageCode.JAVA;
     private int version = 0;
     /**
-     * 相当于requestId
+     * 客户端请求序号，相当于requestId
      */
     private int opaque = requestId.getAndIncrement();
     /**
      * 区分是普通RPC，还是onewayRPC
+     * 倒数第一位，表示请求类型，0：请求，1：返回。
+     * 倒数第二位，1：表示oneway。
      */
     private int flag = 0;
+    // 描述
     private String remark;
+    // 扩展属性
     private HashMap<String, String> extFields;
+    // 每个请求对应的请求头信息
     private transient CommandCustomHeader customHeader;
 
     private SerializeType serializeTypeCurrentRPC = serializeTypeConfigInThisServer;
 
+    // 消息体内容
     private transient byte[] body;
 
     protected RemotingCommand() {
