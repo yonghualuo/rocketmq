@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 消息的物理存储文件
  * 为了保证CommitLog和CommitQueue的一致性，CommitLog里存储了Consume Queues、Message Key、Tag等所有信息。
+ * 所有消息主题的消息都存储在CommitLog文件中。
  *
  * Store all metadata downtime for recovery, data protection reliability
  */
@@ -559,8 +560,10 @@ public class CommitLog {
 
         long eclipseTimeInLock = 0;
         MappedFile unlockMappedFile = null;
+        // 获取当前可以写入的CommitLog文件
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
+        // 将消息存储到CommitLog文件中是串行的
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
         try {
             long beginLockTimestamp = this.defaultMessageStore.getSystemClock().now();
@@ -570,9 +573,11 @@ public class CommitLog {
             // global
             msg.setStoreTimestamp(beginLockTimestamp);
 
+            // 本次是第一次发送消息，用偏移量0创建第一个commit文件
             if (null == mappedFile || mappedFile.isFull()) {
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
+            // 文件创建失败，很有可能是磁盘空间不足或权限不足。
             if (null == mappedFile) {
                 log.error("create mapped file1 error, topic: " + msg.getTopic() + " clientAddr: " + msg.getBornHostString());
                 beginTimeInLock = 0;
@@ -1187,6 +1192,9 @@ public class CommitLog {
             long wroteOffset = fileFromOffset + byteBuffer.position();
 
             this.resetByteBuffer(hostHolder, 8);
+            /**
+             * 创建全局唯一消息ID，消息ID有16字节，消息ID组成有 `4字节IP` + `4字节端口号` + `8字节消息偏移量`
+             */
             String msgId = MessageDecoder.createMessageId(this.msgIdMemory, msgInner.getStoreHostBytes(hostHolder), wroteOffset);
 
             // Record ConsumeQueue information

@@ -208,7 +208,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * 追加message
+     * 将消息追加到MappedFile中
      *
      * @param messageExt
      * @param cb
@@ -218,8 +218,9 @@ public class MappedFile extends ReferenceResource {
         assert messageExt != null;
         assert cb != null;
 
+        // 获取MappedFile当前指针
         int currentPos = this.wrotePosition.get();
-
+        // 通过slice()方法创建一个与MappedFile的共享内存区，并设置position为当前指针。
         if (currentPos < this.fileSize) {
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);

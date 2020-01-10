@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 消息的逻辑队列，类似数据库的索引文件，存储的是指向物理存储的地址。每个Topic下的每个MessageQueue都有一个对应的ConsumeQueue文件。
  * 只存储偏移量信息，所以大部分能够存放在内存中，操作速度很快。
+ * 消息到达CommitLog文件后，将异步转发到消息消费队列，供消息消费者消费。
  */
 public class ConsumeQueue {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
