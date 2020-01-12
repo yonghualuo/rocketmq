@@ -28,11 +28,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * 短暂的存储池
+ * 临时存储数据，提供一种内存锁定，将当前堆外内存一直锁定在内存中，避免被进程将内存交换到磁盘。
+ */
 public class TransientStorePool {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    // availableBuffers个数
     private final int poolSize;
+    // 每个ByteBuffer大小
     private final int fileSize;
+    // ByteBuffer容器，双端队列
     private final Deque<ByteBuffer> availableBuffers;
     private final MessageStoreConfig storeConfig;
 
@@ -47,6 +54,9 @@ public class TransientStorePool {
      * It's a heavy init method.
      */
     public void init() {
+        /**
+         * 创建poolSize个堆外内存，并利用LibC类库将该批内存锁定，避免被置换到交换区，提高存储性能。
+         */
         for (int i = 0; i < poolSize; i++) {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(fileSize);
 

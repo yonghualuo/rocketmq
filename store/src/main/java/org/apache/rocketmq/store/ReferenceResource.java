@@ -43,7 +43,9 @@ public abstract class ReferenceResource {
     public void shutdown(final long intervalForcibly) {
         if (this.available) {
             this.available = false;
+            // 设置初次关闭的时间戳为当前时间戳
             this.firstShutdownTimestamp = System.currentTimeMillis();
+            // 调用release方法尝试释放资源，release只有在引用次数小于1的情况下才会释放资源
             this.release();
         } else if (this.getRefCount() > 0) {
             if ((System.currentTimeMillis() - this.firstShutdownTimestamp) >= intervalForcibly) {
@@ -59,7 +61,7 @@ public abstract class ReferenceResource {
             return;
 
         synchronized (this) {
-
+            // release成功将MappedByteBuffer资源释放时为True
             this.cleanupOver = this.cleanup(value);
         }
     }

@@ -367,23 +367,27 @@ public class CommitLog {
     }
 
     private static int calMsgLength(int bodyLength, int topicLength, int propertiesLength) {
-        final int msgLen = 4 //TOTALSIZE
-            + 4 //MAGICCODE
-            + 4 //BODYCRC
-            + 4 //QUEUEID
-            + 4 //FLAG
-            + 8 //QUEUEOFFSET
-            + 8 //PHYSICALOFFSET
-            + 4 //SYSFLAG
-            + 8 //BORNTIMESTAMP
-            + 8 //BORNHOST
-            + 8 //STORETIMESTAMP
-            + 8 //STOREHOSTADDRESS
-            + 4 //RECONSUMETIMES
-            + 8 //Prepared Transaction Offset
-            + 4 + (bodyLength > 0 ? bodyLength : 0) //BODY
-            + 1 + topicLength //TOPIC
-            + 2 + (propertiesLength > 0 ? propertiesLength : 0) //propertiesLength
+        final int msgLen =
+              4 //TOTALSIZE, 该消息条目总长度，4字节
+            + 4 //MAGICCODE，魔数，4字节。固定值0xdaa32o0a7
+            + 4 //BODYCRC, 消息体crc校验码，4字节。
+            + 4 //QUEUEID，消息消费队列ID，4字节。
+            + 4 //FLAG，消息flag，RocketMQ不做处理，供应用程序使用，默认4字节。
+            + 8 //QUEUEOFFSET，消息在消息消费队列的偏移量，8字节。
+            + 8 //PHYSICALOFFSET，消息在CommitLog文件中的偏移量，8字节。
+            + 4 //SYSFLAG，消息系统Flag，例如是否压缩、是否是事务消息等，4字节。
+            + 8 //BORNTIMESTAMP，消息生产者调用消息发送API的时间戳，8字节。
+            + 8 //BORNHOST，消息发送者IP、端口号，8字节。
+            + 8 //STORETIMESTAMP，消息存储时间戳，8字节。
+            + 8 //STOREHOSTADDRESS，Broker服务器IP+端口号，8字节。
+            + 4 //RECONSUMETIMES，消息重试次数，4字节。
+            + 8 //Prepared Transaction Offset，事务消息物理偏移量，8字节。
+            + 4 // BodyLength，消息体长度，4字节。
+            + (bodyLength > 0 ? bodyLength : 0) //BODY，消息体内容，长度为bodyLength中存储的值。
+            + 1 // TopicLength，主题存储长度，1字节，表示主题名称长度不能超过255个字符。
+            + topicLength //TOPIC，主题，长度为TopicLength中存储的值。
+            + 2 // propertiesLength，消息属性长度，2个字节
+            + (propertiesLength > 0 ? propertiesLength : 0) //消息属性，长度为PropertiesLength中存储的值。
             + 0;
         return msgLen;
     }
@@ -615,6 +619,7 @@ public class CommitLog {
             eclipseTimeInLock = this.defaultMessageStore.getSystemClock().now() - beginLockTimestamp;
             beginTimeInLock = 0;
         } finally {
+            // 释放putMessageLock锁
             putMessageLock.unlock();
         }
 
@@ -1159,6 +1164,9 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 只是将消息追加在内存中，需要根据是同步刷盘，还是异步刷盘方式，将内存中的数据持久化到磁盘。
+     */
     class DefaultAppendMessageCallback implements AppendMessageCallback {
         // File at the end of the minimum fixed length empty
         private static final int END_FILE_MIN_BLANK_LENGTH = 4 + 4;
@@ -1311,6 +1319,10 @@ public class CommitLog {
             if (propertiesLength > 0)
                 this.msgStoreItemMemory.put(propertiesData);
 
+            /**
+             * 将消息内容存储到ByteBuffer中，然后创建AppendMessageResult。
+             * 这里只是将消息存储在MappedFile对应的内存映射Buffer中，并没有刷写到磁盘。
+             */
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
             // Write messages to the queue buffer
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);
@@ -1324,7 +1336,7 @@ public class CommitLog {
                     break;
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
-                    // The next update ConsumeQueue information
+                    // The next update ConsumeQueue information，更新消息队列逻辑偏移量
                     CommitLog.this.topicQueueTable.put(key, ++queueOffset);
                     break;
                 default:
@@ -1371,6 +1383,12 @@ public class CommitLog {
                 }
                 totalMsgLen += msgLen;
                 // Determines whether there is sufficient free space
+                /**
+                 * 如果消息长度 + ·END_FILE_MIN_BLANK_LENGTH·大于CommitLog文件的空闲空间，
+                 * 则返回AppendMessageStatus.END_OF_FILE
+                 *
+                 * 每个CommitLog文件最少会空闲8个字节，高4字节存储当前文件剩余空间，低4字节存储魔数。
+                 */
                 if ((totalMsgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                     this.resetByteBuffer(this.msgStoreItemMemory, 8);
                     // 1 TOTALSIZE
