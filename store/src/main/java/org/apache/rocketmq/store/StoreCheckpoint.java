@@ -27,13 +27,26 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * checkpoint的作用是记录Commitlog、ConsumeQueue、Index文件的刷盘时间点
+ * 文件固定长度为4k，其中只用该文件的前面24个字节
+ */
 public class StoreCheckpoint {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private final RandomAccessFile randomAccessFile;
     private final FileChannel fileChannel;
     private final MappedByteBuffer mappedByteBuffer;
+    /**
+     * commitlog文件刷盘时间点
+     */
     private volatile long physicMsgTimestamp = 0;
+    /**
+     * 消息消费队列文件刷盘时间点
+     */
     private volatile long logicsMsgTimestamp = 0;
+    /**
+     * 索引文件刷盘时间点
+     */
     private volatile long indexMsgTimestamp = 0;
 
     public StoreCheckpoint(final String scpPath) throws IOException {

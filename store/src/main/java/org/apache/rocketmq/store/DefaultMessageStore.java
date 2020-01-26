@@ -174,15 +174,18 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
+     * 防止Broke宕机，commitlog、consumelog和indexfile不一致。
      * @throws IOException
      */
     public boolean load() {
         boolean result = true;
 
         try {
+            // 判断abort文件是否存在
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
+            // 加载延迟队列
             if (null != scheduleMessageService) {
                 result = result && this.scheduleMessageService.load();
             }
@@ -236,6 +239,11 @@ public class DefaultMessageStore implements MessageStore {
             this.scheduleMessageService.start();
         }
 
+        /**
+         * 开启一个线程ReputMessageService来准实时转发CommitLog文件更新事件，
+         * 相应的任务处理器根据转发的消息及时更新ConsumeQueue、IndexFile文件。
+         */
+        // reputFromOffset的含义是，从哪个物理偏移量开始转发消息给ConsumeQueue和IndexFile。
         if (this.getMessageStoreConfig().isDuplicationEnable()) {
             this.reputMessageService.setReputFromOffset(this.commitLog.getConfirmOffset());
         } else {
@@ -1186,6 +1194,9 @@ public class DefaultMessageStore implements MessageStore {
         log.info(fileName + (result ? " create OK" : " already exists"));
     }
 
+    /**
+     * RocketMQ清除过期文件的方法是：如果非当前写文件在一定时间间隔内没有再次被更新，则认为是过期文件，可以被删除。默认每个文件的过期时间为72h。
+     */
     private void addScheduleTask() {
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -1231,8 +1242,13 @@ public class DefaultMessageStore implements MessageStore {
         // }, 1, 1, TimeUnit.HOURS);
     }
 
+    /**
+     * 检测是否需要清除过期文件
+     */
     private void cleanFilesPeriodically() {
+        // 清除消息存储文件
         this.cleanCommitLogService.run();
+        // 清除消息消费队列文件
         this.cleanConsumeQueueService.run();
     }
 
@@ -1293,6 +1309,10 @@ public class DefaultMessageStore implements MessageStore {
         return true;
     }
 
+    /**
+     * 根据Broker是否是正常停止，执行不同的回复策略。
+     * @param lastExitOK
+     */
     private void recover(final boolean lastExitOK) {
         this.recoverConsumeQueue();
 
@@ -1378,6 +1398,10 @@ public class DefaultMessageStore implements MessageStore {
         return runningFlags;
     }
 
+    /**
+     * 分别调用 @构建消息消费队列、@构建索引文件。
+     * @param req
+     */
     public void doDispatch(DispatchRequest req) {
         for (CommitLogDispatcher dispatcher : this.dispatcherList) {
             dispatcher.dispatch(req);
@@ -1483,12 +1507,23 @@ public class DefaultMessageStore implements MessageStore {
 
         private void deleteExpiredFiles() {
             int deleteCount = 0;
+            // 文件保留时间
             long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
+            // 删除物理文件的间隔，因为在一次清除过程中，可能需要被删除的文件不止一个，该值指定两次删除文件的间隔时间。
             int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
+            /**
+             * 在清除过期文件时，如果该文件被其他线程所占用（引用次数大于0，比如读取消息），此时会阻止此次删除任务，同时在第一次
+             * 试图删除该文件时记录当前时间戳。
+             * 表示第一次拒绝删除之后能保留的最大时间，在此时间内，同样可以被拒绝删除，同时会将引用减少1000个，超过该时间间隔后，
+             * 文件将被强制删除。
+             */
             int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
 
+            // 指定删除文件的时间点
             boolean timeup = this.isTimeToDelete();
+            // 磁盘空间是否充足
             boolean spacefull = this.isSpaceToDelete();
+            // 预留，手工触发
             boolean manualDelete = this.manualDeleteFileSeveralTimes > 0;
 
             if (timeup || spacefull || manualDelete) {
@@ -1543,21 +1578,23 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         private boolean isSpaceToDelete() {
+            // 表示commitlog、consumequeue文件所在磁盘分区的最大使用量，如果超过该值，则需要立即清除过期文件。
             double ratio = DefaultMessageStore.this.getMessageStoreConfig().getDiskMaxUsedSpaceRatio() / 100.0;
-
+            // 表示是否需要立即清除过期文件
             cleanImmediately = false;
 
             {
                 String storePathPhysic = DefaultMessageStore.this.getMessageStoreConfig().getStorePathCommitLog();
+                // 当前commitlog目录所在的磁盘分区的磁盘使用率。
                 double physicRatio = UtilAll.getDiskPartitionSpaceUsedPercent(storePathPhysic);
-                if (physicRatio > diskSpaceWarningLevelRatio) {
+                if (physicRatio > diskSpaceWarningLevelRatio) { // 将设置磁盘不可写，此时会拒绝新消息的写入。
                     boolean diskok = DefaultMessageStore.this.runningFlags.getAndMakeDiskFull();
                     if (diskok) {
                         DefaultMessageStore.log.error("physic disk maybe full soon " + physicRatio + ", so mark disk full");
                     }
 
                     cleanImmediately = true;
-                } else if (physicRatio > diskSpaceCleanForciblyRatio) {
+                } else if (physicRatio > diskSpaceCleanForciblyRatio) { // 建议立即执行过期文件删除，但不会拒绝新消息的写入。
                     cleanImmediately = true;
                 } else {
                     boolean diskok = DefaultMessageStore.this.runningFlags.getAndMakeDiskOK();
@@ -1766,11 +1803,13 @@ public class DefaultMessageStore implements MessageStore {
                     break;
                 }
 
+                // 返回reputFromOffset偏移量开始的全部有效数据(commitlog文件)
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
 
+                        // 从result返回的ByteBuffer中循环读取消息，一次读取一条。
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
                             DispatchRequest dispatchRequest =
                                 DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
@@ -1826,6 +1865,9 @@ public class DefaultMessageStore implements MessageStore {
             }
         }
 
+        /**
+         * 每执行一次任务推送休息1ms就继续尝试推送消息到消息消费队列和索引文件
+         */
         @Override
         public void run() {
             DefaultMessageStore.log.info(this.getServiceName() + " service started");

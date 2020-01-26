@@ -114,6 +114,10 @@ public class MappedFileQueue {
         return mfs;
     }
 
+    /**
+     * 删除offset之后的所有文件
+     * @param offset
+     */
     public void truncateDirtyFiles(long offset) {
         List<MappedFile> willRemoveFiles = new ArrayList<MappedFile>();
 
@@ -124,13 +128,13 @@ public class MappedFileQueue {
                     file.setWrotePosition((int) (offset % this.mappedFileSize));
                     file.setCommittedPosition((int) (offset % this.mappedFileSize));
                     file.setFlushedPosition((int) (offset % this.mappedFileSize));
-                } else {
+                } else { // 如果offset小于文件的起始偏移量，说明该文件是有效文件后面创建的
                     file.destroy(1000);
                     willRemoveFiles.add(file);
                 }
             }
         }
-
+        // 将文件从物理磁盘删除
         this.deleteExpiredFile(willRemoveFiles);
     }
 
@@ -157,11 +161,15 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 加载CommitLog
+     * @return
+     */
     public boolean load() {
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
         if (files != null) {
-            // ascending order
+            // ascending order，按照文件名排序
             Arrays.sort(files);
             for (File file : files) {
 
@@ -318,7 +326,7 @@ public class MappedFileQueue {
     }
 
     /**
-     * 获取存储文件的最大偏移量。
+     * 获取存储文件（CommitLog的内存）的最大偏移量。
      * 返回最后一个MappedFile文件的fileFromOffset，加上MappedFile文件当前的写指针。
      * @return
      */
@@ -356,6 +364,15 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 文件销毁与删除
+     *
+     * @param expiredTime
+     * @param deleteFilesInterval
+     * @param intervalForcibly
+     * @param cleanImmediately
+     * @return
+     */
     public int deleteExpiredFileByTime(final long expiredTime,
         final int deleteFilesInterval,
         final long intervalForcibly,
@@ -445,6 +462,12 @@ public class MappedFileQueue {
         return deleteCount;
     }
 
+    /**
+     * 刷盘
+     *
+     * @param flushLeastPages
+     * @return
+     */
     public boolean flush(final int flushLeastPages) {
         boolean result = true;
         MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0);

@@ -205,6 +205,7 @@ public class IndexService {
             DispatchRequest msg = req;
             String topic = msg.getTopic();
             String keys = msg.getKeys();
+            // 如果该消息的物理偏移量小于索引文件中的物理偏移，则说明是重复数据，则忽略本次索引构建。
             if (msg.getCommitLogOffset() < endPhyOffset) {
                 return;
             }
@@ -227,6 +228,7 @@ public class IndexService {
                 }
             }
 
+            // 构建索引键，RocketMQ支持为同一个消息建立多个索引，多个索引键空格分开。
             if (keys != null && keys.length() > 0) {
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
@@ -289,6 +291,10 @@ public class IndexService {
         return indexFile;
     }
 
+    /**
+     * 获取或创建IndexFile文件并获取所有文件最大的物理偏移量。
+     * @return
+     */
     public IndexFile getAndCreateLastIndexFile() {
         IndexFile indexFile = null;
         IndexFile prevIndexFile = null;
