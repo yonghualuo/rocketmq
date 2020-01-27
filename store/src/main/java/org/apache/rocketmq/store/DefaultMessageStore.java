@@ -245,6 +245,7 @@ public class DefaultMessageStore implements MessageStore {
          */
         // reputFromOffset的含义是，从哪个物理偏移量开始转发消息给ConsumeQueue和IndexFile。
         if (this.getMessageStoreConfig().isDuplicationEnable()) {
+            // 如果允许消息重复，设置重新推送偏移量为CommitLog文件的提交偏移量
             this.reputMessageService.setReputFromOffset(this.commitLog.getConfirmOffset());
         } else {
             this.reputMessageService.setReputFromOffset(this.commitLog.getMaxOffset());
@@ -1825,6 +1826,14 @@ public class DefaultMessageStore implements MessageStore {
 
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
+                                        /**
+                                         * 当新消息达到CommitLog时，ReputMessageService线程负责将消息转发给ConsumeQueue、IndexFile，
+                                         * 如果Broker端口开启了长轮询模式并且角色主节点，
+                                         * 则最终将调用PullRequestHoldService线程的notifyMessageArriving方法唤醒挂起线程，
+                                         * 判断当前消费队列最大偏移量是否大于待拉取偏移量，
+                                         * 如果大于则拉取消息。长轮询模式使得消息拉取能实现准实时。
+                                         *
+                                         */
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
