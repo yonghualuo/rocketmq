@@ -66,6 +66,9 @@ import org.apache.rocketmq.store.stats.BrokerStatsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Broker端处理消息拉取
+ */
 public class PullMessageProcessor implements NettyRequestProcessor {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -86,6 +89,14 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         return false;
     }
 
+    /**
+     *
+     * @param channel 网络通道，通过该通道向消息拉取客户端发送响应结果
+     * @param request 消息拉取请求
+     * @param brokerAllowSuspend Broker端是否支持挂起，若true，表示支持挂起，则将响应对象response设置为null，将不会立即向客户端写入响应。
+     * @return
+     * @throws RemotingCommandException
+     */
     private RemotingCommand processRequest(final Channel channel, RemotingCommand request, boolean brokerAllowSuspend)
         throws RemotingCommandException {
         RemotingCommand response = RemotingCommand.createResponseCommand(PullMessageResponseHeader.class);
@@ -224,6 +235,9 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        /**
+         * 根据订阅消息，构建消息过滤器。
+         */
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
@@ -236,6 +250,9 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         final GetMessageResult getMessageResult =
             this.brokerController.getMessageStore().getMessage(requestHeader.getConsumerGroup(), requestHeader.getTopic(),
                 requestHeader.getQueueId(), requestHeader.getQueueOffset(), requestHeader.getMaxMsgNums(), messageFilter);
+        /**
+         * 根据主从同步延迟，如果从节点数据包含下一次拉取的偏移量，设置下一次拉取任务的brokerId。
+         */
         if (getMessageResult != null) {
             response.setRemark(getMessageResult.getStatus().name());
             responseHeader.setNextBeginOffset(getMessageResult.getNextBeginOffset());
@@ -365,6 +382,13 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                 this.executeConsumeMessageHookBefore(context);
             }
 
+            /**
+             *    ResponseCode        <=======>   GetMessageStatus
+             * SUCCESS                  <->         FOUND
+             * PULL_RETRY_IMMEDIATELY   <->         MESSAGE_WAS_REMOVING
+             * PULL_OFFSET_MOVED        <->         NO_MATCHED_LOGIC_QUEUE: 未找到队列
+             * PULL_NOT_FOUND           <->         OFFSET_FOUND_NULL: 消息物理偏移量为空
+             */
             switch (response.getCode()) {
                 case ResponseCode.SUCCESS:
 
@@ -459,6 +483,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         }
 
         boolean storeOffsetEnable = brokerAllowSuspend;
+        // 如果commitlog标记可用并且当前节点为主节点，则更新消息消费进度。
         storeOffsetEnable = storeOffsetEnable && hasCommitOffsetFlag;
         storeOffsetEnable = storeOffsetEnable
             && this.brokerController.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE;

@@ -40,6 +40,8 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
+ * 推模式消息消费者
+ *
  * In most scenarios, this is the mostly recommended class to consume messages.
  * </p>
  *
@@ -62,6 +64,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     protected final transient DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
 
     /**
+     * 消费者所属组
+     *
      * Consumers of the same role is required to have exactly same subscriptions and consumerGroup to correctly achieve
      * load balance. It's required and needs to be globally unique.
      * </p>
@@ -82,10 +86,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * This field defaults to clustering.
      * offset，集群时使用broker代存，广播时使用本地文件。
+     * 消息消费模式，分为集群模式、广播模式，默认为集群模式。
      */
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
     /**
+     *
+     * 根据消息进度从消息服务器拉取不到消息时重新计算消费策略。
+     *
      * Consuming point on consumer booting.
      * </p>
      *
@@ -127,21 +135,29 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private String consumeTimestamp = UtilAll.timeMillisToHumanString3(System.currentTimeMillis() - (1000 * 60 * 30));
 
     /**
+     * 集群模式下消息队列负载策略。
+     *
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
     /**
+     * 订阅信息
+     *
      * Subscription relationship
      */
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
     /**
+     * 消息业务监听器
+     *
      * Message listener
      */
     private MessageListener messageListener;
 
     /**
+     * 消息消费进度存储器
+     *
      * Offset Storage
      */
     private OffsetStore offsetStore;
@@ -162,11 +178,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private long adjustThreadPoolNumsThreshold = 100000;
 
     /**
+     * 并发消息消费时，处理队列最大跨度，默认2000，表示如果消息处理队列中偏移量最大的消息与偏移量最小的消息的跨度超过2000，则延迟50ms后再拉取消息。
      * Concurrently max span offset.it has no effect on sequential consumption
      */
     private int consumeConcurrentlyMaxSpan = 2000;
 
     /**
+     * 每1000次流控后，打印流控日志。
+     *
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
      */
@@ -204,21 +223,28 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int pullThresholdSizeForTopic = -1;
 
     /**
+     * 推模式下拉取任务间隔时间，默认一次拉取任务完成继续拉取。
+     *
      * Message pull Interval
      */
     private long pullInterval = 0;
 
     /**
+     * 消息并发消费时一次消费消息条数，
+     * 通俗点说就是每次传入MessageListenner#consumeMessage中的消息条数。
      * Batch consumption size
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
+     * 每次消息拉取所拉取的条数
      * Batch pull size
      */
     private int pullBatchSize = 32;
 
     /**
+     * 是否每次拉取消息都更新订阅信息
+     *
      * Whether update subscription relationship when every pull
      */
     private boolean postSubscriptionWhenPull = false;
@@ -229,6 +255,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private boolean unitMode = false;
 
     /**
+     * 最大消费重试次数
+     * 如果消息消费次数超过maxReconsumeTimes还未成功，则将该消息转移到一个失败队列，等待被删除。
      * Max re-consume times. -1 means 16 times.
      * </p>
      *
@@ -238,11 +266,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private int maxReconsumeTimes = -1;
 
     /**
+     * 延迟将该队列的消息提交到消费者线程的等待时间，默认延迟1s。
      * Suspending pulling time for cases requiring slow pulling like flow-control scenario.
      */
     private long suspendCurrentQueueTimeMillis = 1000;
 
     /**
+     * 消息消费超时时间，默认15分钟。
+     *
      * Maximum amount of time in minutes a message may block the consuming thread.
      */
     private long consumeTimeout = 15;
@@ -489,6 +520,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 发送消息ACK确认
+     *
      * Send message back to the broker whose name is <code>brokerName</code> and the message will be re-delivered in
      * future.
      *
@@ -506,12 +539,21 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
         this.defaultMQPushConsumerImpl.sendMessageBack(msg, delayLevel, brokerName);
     }
 
+    /**
+     * 获取消费者对主题topic分配量哪些消息队列
+     *
+     * @param topic message topic
+     * @return
+     * @throws MQClientException
+     */
     @Override
     public Set<MessageQueue> fetchSubscribeMessageQueues(String topic) throws MQClientException {
         return this.defaultMQPushConsumerImpl.fetchSubscribeMessageQueues(topic);
     }
 
     /**
+     * 消息消费者启动流程
+     *
      * This method gets internal infrastructure readily to serve. Instances must call this method after configuration.
      *
      * @throws MQClientException if there is any client error.
@@ -537,6 +579,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 注册并发送消息事件监听器
+     *
      * Register a callback to execute on message arrival for concurrent consuming.
      *
      * @param messageListener message handling callback.
@@ -548,6 +592,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 注册顺序消费事件监听器
+     *
      * Register a callback to execute on message arrival for orderly consuming.
      *
      * @param messageListener message handling callback.
@@ -559,10 +605,12 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 基于主题订阅消息
+     *
      * Subscribe a topic to consuming subscription.
      *
      * @param topic topic to subscribe.
-     * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br>
+     * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br> 消息过滤表达式
      * if null or * expression,meaning subscribe all
      * @throws MQClientException if there is any client error.
      */
@@ -572,6 +620,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 基于主题订阅消息，消息过滤方式使用类模式
+     *
      * Subscribe a topic to consuming subscription.
      *
      * @param topic topic to consume.
@@ -597,6 +647,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
     /**
+     * 取消消息订阅
+     *
      * Un-subscribe the specified topic from subscription.
      *
      * @param topic message topic

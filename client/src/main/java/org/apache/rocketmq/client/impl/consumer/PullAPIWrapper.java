@@ -135,6 +135,26 @@ public class PullAPIWrapper {
         }
     }
 
+    /**
+     *
+     * @param mq 从哪个消息消费队列拉取消息
+     * @param subExpression  消息过滤表达式
+     * @param expressionType 消息表达式类型，分为TAG、SQL92
+     * @param subVersion
+     * @param offset 消息拉取偏移量
+     * @param maxNums 本次拉取最大消息条数，默认32条
+     * @param sysFlag 拉取系统标记
+     * @param commitOffset 当前MessageQueue的消费进度（内存中）
+     * @param brokerSuspendMaxTimeMillis 消息拉取过程中允许Broker挂起时间，默认15s
+     * @param timeoutMillis 消息拉取超时时间
+     * @param communicationMode 消息拉取模式，默认为异步拉取
+     * @param pullCallback 从Broker拉取到消息后的回调方法
+     * @return
+     * @throws MQClientException
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public PullResult pullKernelImpl(
         final MessageQueue mq,
         final String subExpression,
@@ -187,6 +207,10 @@ public class PullAPIWrapper {
             requestHeader.setSubVersion(subVersion);
             requestHeader.setExpressionType(expressionType);
 
+            /**
+             * 如果消息过滤模式为类过滤，则需要根据主题名称、broker地址找到注册在Broker上的FilterServer地址，
+             * 从FilterServer上拉取消息。
+             */
             String brokerAddr = findBrokerResult.getBrokerAddr();
             if (PullSysFlag.hasClassFilterFlag(sysFlagInner)) {
                 brokerAddr = computPullFromWhichFilterServer(mq.getTopic(), brokerAddr);
