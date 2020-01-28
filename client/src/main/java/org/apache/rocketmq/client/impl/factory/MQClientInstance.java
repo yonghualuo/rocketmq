@@ -301,6 +301,7 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
+        // 定时持久化消息消费进度到磁盘
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
