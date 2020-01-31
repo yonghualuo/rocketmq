@@ -350,7 +350,7 @@ public class ProcessQueue {
     }
 
     /**
-     * 从ProcessQueue中取出batchSize条消息。
+     * 从ProcessQueue中取出batchSize条消息，临时存储在consumingMsgOrderlyTreeMap属性中。
      *
      * @param batchSize
      * @return

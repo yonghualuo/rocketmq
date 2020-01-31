@@ -71,12 +71,19 @@ public class PullAPIWrapper {
         final SubscriptionData subscriptionData) {
         PullResultExt pullResultExt = (PullResultExt) pullResult;
 
+        /**
+         * 根据PullRequest请求从主服务器拉取消息后会返回下一次建议拉取的brokerId，消息消费者线程在收到消息后，
+         * 会根据主服务器的建议拉取brokerId来更新pullFromWhichNodeTable。
+         */
         this.updatePullFromWhichNode(mq, pullResultExt.getSuggestWhichBrokerId());
         if (PullStatus.FOUND == pullResult.getPullStatus()) {
             ByteBuffer byteBuffer = ByteBuffer.wrap(pullResultExt.getMessageBinary());
             List<MessageExt> msgList = MessageDecoder.decodes(byteBuffer);
 
             List<MessageExt> msgListFilterAgain = msgList;
+            /**
+             * 过滤TAG模式且订阅TAG集合不为空的，且集合中包含消息的TAG则返回给消费者消费，否则跳过。
+             */
             if (!subscriptionData.getTagsSet().isEmpty() && !subscriptionData.isClassFilterMode()) {
                 msgListFilterAgain = new ArrayList<MessageExt>(msgList.size());
                 for (MessageExt msg : msgList) {

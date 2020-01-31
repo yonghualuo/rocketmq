@@ -160,6 +160,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         SubscriptionData subscriptionData = null;
         ConsumerFilterData consumerFilterData = null;
         if (hasSubscriptionFlag) {
+            // 根据主题、消息过滤表达式构建订阅消息实体。如果是非TAG模式，构建过滤数据ConsumerFilterData。
             try {
                 subscriptionData = FilterAPI.build(
                     requestHeader.getTopic(), requestHeader.getSubscription(), requestHeader.getExpressionType()
@@ -240,6 +241,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
          */
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
+            // 支持对重试主题的过滤
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         } else {
@@ -259,7 +261,13 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             responseHeader.setMinOffset(getMessageResult.getMinOffset());
             responseHeader.setMaxOffset(getMessageResult.getMaxOffset());
 
+            // @link org.apache.rocketmq.store.DefaultMessageStore#getMessage()
             if (getMessageResult.isSuggestPullingFromSlave()) {
+                /**
+                 * 如果主服务器繁忙，则建议下一次从从服务器拉取消息，
+                 * 设置suggestWhichBrokerId为配置文件中whichBrokerWhenConsumeSlowly属性，默认为1.
+                 * 如果一个Master拥有多台Slave服务器，参与消息拉取负载的从服务器只会是其中一个。
+                 */
                 responseHeader.setSuggestWhichBrokerId(subscriptionGroupConfig.getWhichBrokerWhenConsumeSlowly());
             } else {
                 responseHeader.setSuggestWhichBrokerId(MixAll.MASTER_ID);
