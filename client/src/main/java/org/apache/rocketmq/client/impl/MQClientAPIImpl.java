@@ -153,7 +153,7 @@ import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 import org.slf4j.Logger;
 
 /**
- * 消费端
+ * 消费端，封装了客户端与Broker通信的方法，对调用者隐藏了真正网络通信部分的具体实现。
  */
 public class MQClientAPIImpl {
 
@@ -164,7 +164,7 @@ public class MQClientAPIImpl {
     static {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
     }
-
+    // @see NettyRemotingClient ,RocketMQ各进程之间网络通信的底层实现类。
     private final RemotingClient remotingClient;
     private final TopAddressing topAddressing;
     private final ClientRemotingProcessor clientRemotingProcessor;

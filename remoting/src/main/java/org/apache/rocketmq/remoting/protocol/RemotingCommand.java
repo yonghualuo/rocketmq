@@ -172,6 +172,7 @@ public class RemotingCommand {
         int oriHeaderLen = byteBuffer.getInt(); // 4
         int headerLength = getHeaderLength(oriHeaderLen); // header长度, int的后24位
 
+        // 获取header数据
         byte[] headerData = new byte[headerLength];
         byteBuffer.get(headerData);
 
@@ -255,8 +256,8 @@ public class RemotingCommand {
     }
 
     public void markResponseType() {
-        int bits = 1 << RPC_TYPE;
-        this.flag |= bits;
+        int bits = 1 << RPC_TYPE; // 1
+        this.flag |= bits; // 1表示返回
     }
 
     public CommandCustomHeader readCustomHeader() {
@@ -267,6 +268,13 @@ public class RemotingCommand {
         this.customHeader = customHeader;
     }
 
+    /**
+     * 解码自定义header，将extFields填充到CommandCustomHeader对象中
+     *
+     * @param classHeader
+     * @return
+     * @throws RemotingCommandException
+     */
     public CommandCustomHeader decodeCommandCustomHeader(
         Class<? extends CommandCustomHeader> classHeader) throws RemotingCommandException {
         CommandCustomHeader objectHeader;
@@ -282,6 +290,7 @@ public class RemotingCommand {
 
             Field[] fields = getClazzFields(classHeader);
             for (Field field : fields) {
+                // 非static属性字段
                 if (!Modifier.isStatic(field.getModifiers())) {
                     String fieldName = field.getName();
                     if (!fieldName.startsWith("this")) {
@@ -406,6 +415,9 @@ public class RemotingCommand {
         }
     }
 
+    /**
+     * customHeader => extFields
+     */
     public void makeCustomHeaderToNet() {
         if (this.customHeader != null) {
             Field[] fields = getClazzFields(customHeader.getClass());

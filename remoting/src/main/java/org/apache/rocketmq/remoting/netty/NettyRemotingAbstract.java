@@ -178,10 +178,12 @@ public abstract class NettyRemotingAbstract {
                         }
 
                         final RemotingCommand response = pair.getObject1().processRequest(ctx, cmd);
+
                         if (rpcHook != null) {
                             rpcHook.doAfterResponse(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd, response);
                         }
 
+                        // 非oneway请求需将响应数据写回
                         if (!cmd.isOnewayRPC()) {
                             if (response != null) {
                                 response.setOpaque(opaque);
@@ -211,6 +213,7 @@ public abstract class NettyRemotingAbstract {
                 }
             };
 
+            // 拒绝请求
             if (pair.getObject1().rejectRequest()) {
                 final RemotingCommand response = RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_BUSY,
                     "[REJECTREQUEST]system busy, start flow control for a while");
@@ -455,7 +458,7 @@ public abstract class NettyRemotingAbstract {
 
                         responseFuture.putResponse(null);
                         responseTable.remove(opaque);
-                        // 执行回调
+                        // 失败后执行回调
                         try {
                             executeInvokeCallback(responseFuture);
                         } catch (Throwable e) {

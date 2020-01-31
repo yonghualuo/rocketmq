@@ -74,6 +74,7 @@ public class RemotingHelper {
                 //bugfix  http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4614802
                 socketChannel.socket().setSoTimeout((int) timeoutMillis);
 
+                // 发送请求
                 ByteBuffer byteBufferRequest = request.encode();
                 while (byteBufferRequest.hasRemaining()) {
                     int length = socketChannel.write(byteBufferRequest);
@@ -93,6 +94,7 @@ public class RemotingHelper {
 
                 sendRequestOK = true;
 
+                // 读取数据
                 ByteBuffer byteBufferSize = ByteBuffer.allocate(4);
                 while (byteBufferSize.hasRemaining()) {
                     int length = socketChannel.read(byteBufferSize);
@@ -110,6 +112,7 @@ public class RemotingHelper {
                     Thread.sleep(1);
                 }
 
+                // 读取数据总长度
                 int size = byteBufferSize.getInt(0);
                 ByteBuffer byteBufferBody = ByteBuffer.allocate(size);
                 while (byteBufferBody.hasRemaining()) {

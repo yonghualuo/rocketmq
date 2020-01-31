@@ -53,6 +53,7 @@ public class ProcessQueue {
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
     /**
      * 保存所有从MessageQueue获取到，但还未处理的消息
+     * Long: 消息的queueOffset
      * MessageExt：消息实体
      */
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
