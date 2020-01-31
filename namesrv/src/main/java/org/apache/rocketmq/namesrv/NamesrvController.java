@@ -35,6 +35,12 @@ import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * NameServer的总控制器，负责所有服务的生命周期管理。
+ *
+ * NameServer最主要的功能就是，为客户端提供寻址服务，协助客户端找到主题对应的Broker地址，此外还负责监控每个Broker的存活状态。
+ * 在集群模式下，NameServer各节点之间是不需要任何通信的，也不会通过任何方式互相感知，每个节点都可以独立提供全部服务。
+ */
 public class NamesrvController {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
@@ -45,10 +51,15 @@ public class NamesrvController {
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
     private final KVConfigManager kvConfigManager;
+    /**
+     * 负责保存和管理集群路由信息
+     */
     private final RouteInfoManager routeInfoManager;
 
     private RemotingServer remotingServer;
-
+    /**
+     * 监控Broker连接状态的代理类
+     */
     private BrokerHousekeepingService brokerHousekeepingService;
 
     private ExecutorService remotingExecutor;

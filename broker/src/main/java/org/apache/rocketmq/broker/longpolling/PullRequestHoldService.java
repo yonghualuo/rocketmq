@@ -68,6 +68,7 @@ public class PullRequestHoldService extends ServiceThread {
         log.info("{} service started", this.getServiceName());
         while (!this.isStopped()) {
             try {
+                // 若开启长轮询，每5s尝试一次，判断新消息是否到达。若未开启，则默认等待1s再次尝试。
                 if (this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                     this.waitForRunning(5 * 1000);
                 } else {
@@ -93,6 +94,10 @@ public class PullRequestHoldService extends ServiceThread {
         return PullRequestHoldService.class.getSimpleName();
     }
 
+    /**
+     * 遍历拉取任务列表，根据主题与队列获取消息消费队列最大偏移量，如果该偏移量大于待拉取偏移量，说明有新的消息到达，
+     * 调用notifyMessageArriving触发消息拉取。
+     */
     private void checkHoldRequest() {
         for (String key : this.pullRequestTable.keySet()) {
             String[] kArray = key.split(TOPIC_QUEUEID_SEPARATOR);
@@ -136,8 +141,13 @@ public class PullRequestHoldService extends ServiceThread {
                             match = request.getMessageFilter().isMatchedByCommitLog(null, properties);
                         }
 
+                        /**
+                         * 如果消息队列的最大偏移量大于待拉取偏移量，如果消息匹配则调用executeRequestWhenWakeup将消息返回给消息拉取客户端
+                         * ，否则等待下一次尝试。
+                         */
                         if (match) {
                             try {
+                                // 当消息到达时，唤醒挂起线程触发一次检查。
                                 this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),
                                     request.getRequestCommand());
                             } catch (Throwable e) {
@@ -147,6 +157,9 @@ public class PullRequestHoldService extends ServiceThread {
                         }
                     }
 
+                    /**
+                     * 如果挂起超时时间超时，则不继续等待将直接返回客户消息未找到。
+                     */
                     if (System.currentTimeMillis() >= (request.getSuspendTimestamp() + request.getTimeoutMillis())) {
                         try {
                             this.brokerController.getPullMessageProcessor().executeRequestWhenWakeup(request.getClientChannel(),

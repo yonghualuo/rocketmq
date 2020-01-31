@@ -46,6 +46,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 路由信息：即客户端需要访问的某个特定服务在哪个节点上。
+ *
+ * 给客户端提供路由寻址服务的方式可以有两种。
+ * 1) 客户端直接连接NamingService服务查询路由信息
+ * 2） 客户端连接集群内任意节点查询路由信息，节点再从自身的缓存或者从NamingService上进行查询。
+ *
  * RocketMQ基于订阅发布机制，一个Topic拥有多个消息队列，一个Broker为每个Topic默认创建4个读队列和4个写队列。
  * 多个Broker组成一个集群，BrokerName由相同的多台Broker组成Master-Slave架构，brokerId为0代表Master，
  * 大于0表示Slave。BrokerLiveInfo中的lastUpdateTimestamp存储上次收到Broker心跳包的时间。
@@ -137,8 +143,10 @@ public class RouteInfoManager {
         RegisterBrokerResult result = new RegisterBrokerResult();
         try {
             try {
+                // 加写锁，防止并发修改数据
                 this.lock.writeLock().lockInterruptibly();
 
+                // 更新clusterAddrTable
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
                 if (null == brokerNames) {
                     brokerNames = new HashSet<String>();
@@ -147,17 +155,17 @@ public class RouteInfoManager {
                 brokerNames.add(brokerName);
 
                 boolean registerFirst = false;
-
+                // 更新brokerAddrTable
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {
-                    registerFirst = true;
+                    registerFirst = true; // 标识需要先注册
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
-                // 注册broker master时
+                // 注册broker master时或Broker中的路由信息变了，需要更新topic
                 if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
@@ -194,6 +202,7 @@ public class RouteInfoManager {
                     }
                 }
 
+                // 如果是Slave Broker，需要在返回的信息中带上master的相关信息。
                 if (MixAll.MASTER_ID != brokerId) {
                     String masterAddr = brokerData.getBrokerAddrs().get(MixAll.MASTER_ID);
                     if (masterAddr != null) {
@@ -205,6 +214,7 @@ public class RouteInfoManager {
                     }
                 }
             } finally {
+                // 释放写锁
                 this.lock.writeLock().unlock();
             }
         } catch (Exception e) {
@@ -386,6 +396,8 @@ public class RouteInfoManager {
     }
 
     /**
+     * 根据主题来查询TopicRouteData
+     *
      * 从路由表topicQueueTable、brokerAddrTable、filterServerTable中分别填充
      * TopicRouteData中的List<QueueData>、List<BrokerData>和filterServer地址表。
      * @param topic
@@ -404,18 +416,21 @@ public class RouteInfoManager {
 
         try {
             try {
+                // 加读锁
                 this.lock.readLock().lockInterruptibly();
+                // 先获取主题对应的队列信息
                 List<QueueData> queueDataList = this.topicQueueTable.get(topic);
                 if (queueDataList != null) {
+                    // 把队列信息返回值中
                     topicRouteData.setQueueDatas(queueDataList);
                     foundQueueData = true;
-
+                    // 遍历队列，找出相关的所有BrokerName
                     Iterator<QueueData> it = queueDataList.iterator();
                     while (it.hasNext()) {
                         QueueData qd = it.next();
                         brokerNameSet.add(qd.getBrokerName());
                     }
-
+                    // 遍历这些BrokerName，找到对应的BrokerData，并写入返回结果中。
                     for (String brokerName : brokerNameSet) {
                         BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                         if (null != brokerData) {
@@ -431,6 +446,7 @@ public class RouteInfoManager {
                     }
                 }
             } finally {
+                // 释放读锁
                 this.lock.readLock().unlock();
             }
         } catch (Exception e) {

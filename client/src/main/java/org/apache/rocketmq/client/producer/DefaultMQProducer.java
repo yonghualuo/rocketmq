@@ -57,6 +57,7 @@ import org.apache.rocketmq.remoting.netty.NettyRemotingClient;
 public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
+     * Producer的内部实现类
      * Wrapping internal implementations for virtually all methods presented in this class.
      */
     protected final transient DefaultMQProducerImpl defaultMQProducerImpl;

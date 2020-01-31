@@ -41,6 +41,8 @@ import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 import org.slf4j.Logger;
 
 /**
+ * 消息队列负载
+ *
  * Base class for rebalance algorithm
  */
 public abstract class RebalanceImpl {
@@ -118,6 +120,10 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 将消息队列按照Broker组织成Map结构，方便下一步向Broker发送锁定消息队列请求。
+     * @return
+     */
     private HashMap<String/* brokerName */, Set<MessageQueue>> buildProcessQueueTableByBrokerName() {
         HashMap<String, Set<MessageQueue>> result = new HashMap<String, Set<MessageQueue>>();
         for (MessageQueue mq : this.processQueueTable.keySet()) {
@@ -166,6 +172,9 @@ public abstract class RebalanceImpl {
         return false;
     }
 
+    /**
+     * 向Broker（Master主节点）发送锁定消息队列，该方法返回成功被当前消费者锁定的消息消费队列。
+     */
     public void lockAll() {
         HashMap<String, Set<MessageQueue>> brokerMqs = this.buildProcessQueueTableByBrokerName();
 
@@ -189,6 +198,7 @@ public abstract class RebalanceImpl {
                     Set<MessageQueue> lockOKMQSet =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
 
+                    // 将成功锁定的消息消费队列相对应的处理队列设置为锁定状态，同时更新加锁时间。
                     for (MessageQueue mq : lockOKMQSet) {
                         ProcessQueue processQueue = this.processQueueTable.get(mq);
                         if (processQueue != null) {
@@ -200,6 +210,10 @@ public abstract class RebalanceImpl {
                             processQueue.setLastLockTimestamp(System.currentTimeMillis());
                         }
                     }
+                    /**
+                     * 遍历当前处理队列中的消息消费队列，如果当前消息消费者不持有该消息队列的锁，
+                     * 将处理队列锁状态设置为false，暂停该消息消费队列的消息拉取与消息消费。
+                     */
                     for (MessageQueue mq : mqs) {
                         if (!lockOKMQSet.contains(mq)) {
                             ProcessQueue processQueue = this.processQueueTable.get(mq);
@@ -274,6 +288,9 @@ public abstract class RebalanceImpl {
                     List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
                     mqAll.addAll(mqSet);
 
+                    /**
+                     *  对cidAll、mqAll排序，同一个消费组内看到的试图保持一致，确保同一个消费队列不会被多个消费者分配。
+                     */
                     Collections.sort(mqAll);
                     Collections.sort(cidAll);
 
@@ -332,6 +349,9 @@ public abstract class RebalanceImpl {
         final boolean isOrder) {
         boolean changed = false;
 
+        /**
+         * 当前消费者负载的消息队列缓存表
+         */
         Iterator<Entry<MessageQueue, ProcessQueue>> it = this.processQueueTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<MessageQueue, ProcessQueue> next = it.next();
@@ -339,6 +359,9 @@ public abstract class RebalanceImpl {
             ProcessQueue pq = next.getValue();
 
             if (mq.getTopic().equals(topic)) {
+                /**
+                 * 说明经过本次消息队列负载后，该mq被分配给其他消费者，故需要暂停该消息队列消息的消费。
+                 */
                 if (!mqSet.contains(mq)) {
                     pq.setDropped(true);
                     if (this.removeUnnecessaryMessageQueue(mq, pq)) {
@@ -368,7 +391,13 @@ public abstract class RebalanceImpl {
 
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
+            /**
+             * 不包含说明是本次新增加的消息队列，首先从内存中移除该消息队列的消费进度，然后从磁盘中读取该消息队列的消费进度，创建PullRequest。
+             */
             if (!this.processQueueTable.containsKey(mq)) {
+                /**
+                 * 顺序消息消费与并发消息消费的第一个关键区别：顺序消息在创建消息队列拉取任务时需要在Broker服务器锁定该消息队列。
+                 */
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;
@@ -405,6 +434,12 @@ public abstract class RebalanceImpl {
     public abstract void messageQueueChanged(final String topic, final Set<MessageQueue> mqAll,
         final Set<MessageQueue> mqDivided);
 
+    /**
+     * 主要持久化待移除MessageQueue消息消费进度。
+     * @param mq
+     * @param pq
+     * @return
+     */
     public abstract boolean removeUnnecessaryMessageQueue(final MessageQueue mq, final ProcessQueue pq);
 
     public abstract ConsumeType consumeType();

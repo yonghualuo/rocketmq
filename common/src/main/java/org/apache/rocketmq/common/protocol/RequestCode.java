@@ -25,7 +25,9 @@ public class RequestCode {
 
     public static final int QUERY_MESSAGE = 12;
     public static final int QUERY_BROKER_OFFSET = 13;
+    // 集群模式下，发送网络请求，从Broker获取消费进度
     public static final int QUERY_CONSUMER_OFFSET = 14;
+    // 集群模式下，发送网络请求，消息进度更新到Broker
     public static final int UPDATE_CONSUMER_OFFSET = 15;
     public static final int UPDATE_AND_CREATE_TOPIC = 17;
     public static final int GET_ALL_TOPIC_CONFIG = 21;

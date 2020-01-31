@@ -27,19 +27,19 @@ public class PullSysFlag {
         int flag = 0;
 
         if (commitOffset) {
-            flag |= FLAG_COMMIT_OFFSET;
+            flag |= FLAG_COMMIT_OFFSET; // 表示从内存中读取的消费进度>0，则设置该标记位。
         }
 
         if (suspend) {
-            flag |= FLAG_SUSPEND;
+            flag |= FLAG_SUSPEND; // 表示消息拉取时支持挂起
         }
 
         if (subscription) {
-            flag |= FLAG_SUBSCRIPTION;
+            flag |= FLAG_SUBSCRIPTION; // 消息过滤机制为表达式，则设置该标记位。
         }
 
         if (classFilter) {
-            flag |= FLAG_CLASS_FILTER;
+            flag |= FLAG_CLASS_FILTER; // 消息过滤机制为类过滤模式。
         }
 
         return flag;
