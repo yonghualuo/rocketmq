@@ -129,6 +129,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             }
         });
 
+        // boss线程池
         this.eventLoopGroupWorker = new NioEventLoopGroup(1, new ThreadFactory() {
             private AtomicInteger threadIndex = new AtomicInteger(0);
 
@@ -160,6 +161,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     @Override
     public void start() {
+        // worker线程池
         this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(
             nettyClientConfig.getClientWorkerThreads(),
             new ThreadFactory() {

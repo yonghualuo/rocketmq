@@ -662,6 +662,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     sysFlag |= MessageSysFlag.COMPRESSED_FLAG;
                 }
 
+                /**
+                 * 如果消息为prepare类型，则设置消息标记为prepare，
+                 * 方便消息服务器正确识别事务消息类型的消息。
+                 */
                 final String tranMsg = msg.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
                 if (tranMsg != null && Boolean.parseBoolean(tranMsg)) {
                     sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
@@ -1003,6 +1007,15 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
     }
 
+    /**
+     * 发送事务消息
+     *
+     * @param msg
+     * @param tranExecuter
+     * @param arg
+     * @return
+     * @throws MQClientException
+     */
     public TransactionSendResult sendMessageInTransaction(final Message msg,
         final LocalTransactionExecuter tranExecuter, final Object arg)
         throws MQClientException {
@@ -1012,7 +1025,11 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         Validators.checkMessage(msg, this.defaultMQProducer);
 
         SendResult sendResult = null;
+        // 为消息添加属性，TRAN_MSG和PGROUP
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_PREPARED, "true");
+        /**
+         * 设置消息生产者组的目的是在查询事务消息本地事务状态时，从该生产者组中随机选择一个消息生产者即可，
+         */
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_PRODUCER_GROUP, this.defaultMQProducer.getProducerGroup());
         try {
             sendResult = this.send(msg);

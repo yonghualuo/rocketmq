@@ -400,6 +400,7 @@ public abstract class NettyRemotingAbstract {
                 }
             });
 
+            // 同步调用时，等待timeoutMillis。
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {

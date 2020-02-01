@@ -72,14 +72,17 @@ import org.slf4j.LoggerFactory;
 public class NettyRemotingServer extends NettyRemotingAbstract implements RemotingServer {
     private static final Logger log = LoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
     private final ServerBootstrap serverBootstrap;
-    private final EventLoopGroup eventLoopGroupSelector;
+    // acceptor线程池
     private final EventLoopGroup eventLoopGroupBoss;
+    // selector线程池
+    private final EventLoopGroup eventLoopGroupSelector;
     private final NettyServerConfig nettyServerConfig;
 
     private final ExecutorService publicExecutor;
     private final ChannelEventListener channelEventListener;
 
     private final Timer timer = new Timer("ServerHouseKeepingService", true);
+    // worker线程池
     private DefaultEventExecutorGroup defaultEventExecutorGroup;
 
     private RPCHook rpcHook;
