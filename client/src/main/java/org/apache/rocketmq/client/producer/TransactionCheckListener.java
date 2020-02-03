@@ -19,5 +19,11 @@ package org.apache.rocketmq.client.producer;
 import org.apache.rocketmq.common.message.MessageExt;
 
 public interface TransactionCheckListener {
+    /**
+     * 事务消息状态回查
+     *
+     * @param msg
+     * @return
+     */
     LocalTransactionState checkLocalTransactionState(final MessageExt msg);
 }
