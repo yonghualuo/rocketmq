@@ -650,7 +650,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     }
 
     /**
-     * 处理 `RemotingCommand` 数据
+     * 业务逻辑处理 `RemotingCommand` 数据
      */
     class NettyClientHandler extends SimpleChannelInboundHandler<RemotingCommand> {
 

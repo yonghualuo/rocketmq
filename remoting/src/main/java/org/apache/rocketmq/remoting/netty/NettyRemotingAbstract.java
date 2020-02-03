@@ -144,9 +144,15 @@ public abstract class NettyRemotingAbstract {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
+                /**
+                 * NettyRemotingServer处理
+                 */
                 case REQUEST_COMMAND:
                     processRequestCommand(ctx, cmd);
                     break;
+                /**
+                 * NettyRemotingClient请求
+                 */
                 case RESPONSE_COMMAND:
                     processResponseCommand(ctx, cmd);
                     break;
