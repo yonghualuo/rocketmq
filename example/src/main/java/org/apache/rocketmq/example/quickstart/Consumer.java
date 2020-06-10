@@ -17,6 +17,9 @@
 package org.apache.rocketmq.example.quickstart;
 
 import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyContext;
 import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
@@ -35,7 +38,7 @@ public class Consumer {
         /*
          * Instantiate with specified consumer group name.
          */
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name_4");
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("GID_" + UUID.randomUUID().toString());
 
         /*
          * Specify name server addresses.
@@ -57,7 +60,7 @@ public class Consumer {
         /*
          * Subscribe one more more topics to consume.
          */
-        consumer.subscribe("TopicTest", "*");
+        consumer.subscribe("topicA", "*");
 
         /*
          *  Register callback to execute on arrival of messages fetched from brokers.

@@ -30,6 +30,7 @@ public class UnregisterClientRequestHeader implements CommandCustomHeader {
     private String producerGroup;
     @CFNullable
     private String consumerGroup;
+    private String envLabel;
 
     public String getClientID() {
         return clientID;
@@ -58,5 +59,13 @@ public class UnregisterClientRequestHeader implements CommandCustomHeader {
     @Override
     public void checkFields() throws RemotingCommandException {
 
+    }
+
+    public String getEnvLabel() {
+        return envLabel;
+    }
+
+    public void setEnvLabel(String envLabel) {
+        this.envLabel = envLabel;
     }
 }

@@ -47,6 +47,7 @@ public class PullMessageRequestHeader implements CommandCustomHeader {
     @CFNotNull
     private Long subVersion;
     private String expressionType;
+    private String envLabel; // 当前所在env
 
     @Override
     public void checkFields() throws RemotingCommandException {
@@ -138,5 +139,13 @@ public class PullMessageRequestHeader implements CommandCustomHeader {
 
     public void setExpressionType(String expressionType) {
         this.expressionType = expressionType;
+    }
+
+    public String getEnvLabel() {
+        return envLabel;
+    }
+
+    public void setEnvLabel(String envLabel) {
+        this.envLabel = envLabel;
     }
 }

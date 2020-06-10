@@ -64,7 +64,7 @@ public class ClientManageProcessorTest {
     public void init() {
         when(handlerContext.channel()).thenReturn(channel);
         clientManageProcessor = new ClientManageProcessor(brokerController);
-        clientChannelInfo = new ClientChannelInfo(channel, clientId, LanguageCode.JAVA, 100);
+        clientChannelInfo = new ClientChannelInfo(channel, clientId, LanguageCode.JAVA, 100, null);
         brokerController.getProducerManager().registerProducer(group, clientChannelInfo);
 
         ConsumerData consumerData = createConsumerData(group, topic);

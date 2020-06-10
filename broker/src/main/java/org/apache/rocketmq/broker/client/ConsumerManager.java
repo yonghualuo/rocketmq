@@ -186,4 +186,26 @@ public class ConsumerManager {
         }
         return groups;
     }
+
+    /**
+     * 获取topic下所有消费组的Env标识
+     *
+     * @param topic
+     * @return
+     */
+    public HashSet<String> queryEnvConsumeByTopic(final String topic) {
+        HashSet<String> envLabels = new HashSet<>();
+        Iterator<Entry<String, ConsumerGroupInfo>> it = this.consumerTable.entrySet().iterator();
+        while (it.hasNext()) {
+            Entry<String, ConsumerGroupInfo> entry = it.next();
+            ConcurrentMap<String, SubscriptionData> subscriptionTable =
+                    entry.getValue().getSubscriptionTable();
+            if (subscriptionTable.containsKey(topic)) {
+                entry.getValue().getChannelInfoTable().forEach((channel, clientChannelInfo) -> {
+                    envLabels.add(clientChannelInfo.getEnvLabel());
+                });
+            }
+        }
+        return envLabels;
+    }
 }

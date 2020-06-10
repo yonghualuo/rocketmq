@@ -17,8 +17,12 @@
 
 package org.apache.rocketmq.broker.filter;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.rocketmq.broker.client.ConsumerEnvInfo;
+import org.apache.rocketmq.common.constant.DevopsConstant;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.filter.ExpressionType;
+import org.apache.rocketmq.common.utils.CommonUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.common.message.MessageDecoder;
@@ -29,7 +33,7 @@ import org.apache.rocketmq.store.ConsumeQueueExt;
 import org.apache.rocketmq.store.MessageFilter;
 
 import java.nio.ByteBuffer;
-import java.util.Map;
+import java.util.*;
 
 public class ExpressionMessageFilter implements MessageFilter {
 
@@ -39,9 +43,18 @@ public class ExpressionMessageFilter implements MessageFilter {
     protected final ConsumerFilterData consumerFilterData;
     protected final ConsumerFilterManager consumerFilterManager;
     protected final boolean bloomDataValid;
+    protected ConsumerEnvInfo consumerEnvInfo;
+
+    public ConsumerEnvInfo getConsumerEnvInfo() {
+        return consumerEnvInfo;
+    }
+
+    public void setConsumerEnvInfo(ConsumerEnvInfo consumerEnvInfo) {
+        this.consumerEnvInfo = consumerEnvInfo;
+    }
 
     public ExpressionMessageFilter(SubscriptionData subscriptionData, ConsumerFilterData consumerFilterData,
-        ConsumerFilterManager consumerFilterManager) {
+                                   ConsumerFilterManager consumerFilterManager) {
         this.subscriptionData = subscriptionData;
         this.consumerFilterData = consumerFilterData;
         this.consumerFilterManager = consumerFilterManager;
@@ -124,21 +137,25 @@ public class ExpressionMessageFilter implements MessageFilter {
             return true;
         }
 
+        Map<String, String> tempProperties = properties;
+        if (tempProperties == null && msgBuffer != null) {
+            tempProperties = MessageDecoder.decodeProperties(msgBuffer);
+        }
+        // TODO 环境标识亲缘性匹配
+        if (!isMatchedByEnv(tempProperties)) {
+            return false;
+        }
+
         if (ExpressionType.isTagType(subscriptionData.getExpressionType())) {
             return true;
         }
 
         ConsumerFilterData realFilterData = this.consumerFilterData;
-        Map<String, String> tempProperties = properties;
 
         // no expression
         if (realFilterData == null || realFilterData.getExpression() == null
-            || realFilterData.getCompiledExpression() == null) {
+                || realFilterData.getCompiledExpression() == null) {
             return true;
-        }
-
-        if (tempProperties == null && msgBuffer != null) {
-            tempProperties = MessageDecoder.decodeProperties(msgBuffer);
         }
 
         Object ret = null;
@@ -159,4 +176,40 @@ public class ExpressionMessageFilter implements MessageFilter {
         return (Boolean) ret;
     }
 
+    protected boolean isMatchedByEnv(Map<String, String> tempProperties) {
+        String msgEnvLabel = tempProperties.get(DevopsConstant.ENV_LABEL);
+        Boolean envMatched = true;
+        if (consumerEnvInfo != null && StringUtils.isNotEmpty(consumerEnvInfo.getEnvLabel())
+            && consumerEnvInfo.getConsumeEnvLabels() != null && !consumerEnvInfo.getConsumeEnvLabels().isEmpty()
+            && StringUtils.isNotEmpty(msgEnvLabel)) {
+
+            // 只能被同等或父级环境消费
+            if (msgEnvLabel.startsWith(consumerEnvInfo.getEnvLabel(), 0)) {
+                String[] specLabels = StringUtils.split(msgEnvLabel, DevopsConstant.LABEL_ENV_SEPARATOR);
+                List<String> specLabelList = new ArrayList<>(Arrays.asList(specLabels));
+
+                while (!specLabelList.isEmpty()) {
+                    String toMatchedLabel = StringUtils.join(specLabelList, DevopsConstant.LABEL_ENV_SEPARATOR);
+                    if (!consumerEnvInfo.getConsumeEnvLabels().contains(toMatchedLabel)) {
+                        specLabelList.remove(specLabelList.size() - 1);
+                        continue;
+                    }
+
+                    if (!CommonUtils.equals(toMatchedLabel, consumerEnvInfo.getEnvLabel())) {
+                        envMatched = false;
+                    }
+                    break;
+                }
+            } else {
+                envMatched = false;
+            }
+        }
+
+        return envMatched;
+    }
+
+
+    public static void main(String... args) {
+        System.out.println("dev.proj1".startsWith("dev.proj1", 0));
+    }
 }

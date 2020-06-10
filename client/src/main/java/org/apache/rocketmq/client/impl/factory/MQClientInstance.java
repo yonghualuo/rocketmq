@@ -63,9 +63,11 @@ import org.apache.rocketmq.common.MQVersion;
 import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.ServiceState;
 import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.common.constant.DevopsConstant;
 import org.apache.rocketmq.common.constant.PermName;
 import org.apache.rocketmq.common.filter.ExpressionType;
 import org.apache.rocketmq.common.protocol.NamespaceUtil;
+import org.apache.rocketmq.common.utils.CommonUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
@@ -698,6 +700,9 @@ public class MQClientInstance {
 
         // clientID
         heartbeatData.setClientID(this.clientId);
+
+        // Env label
+        heartbeatData.setEnvLabel(CommonUtils.getPodEnvVar(DevopsConstant.ENV_LABEL));
 
         // Consumer
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {

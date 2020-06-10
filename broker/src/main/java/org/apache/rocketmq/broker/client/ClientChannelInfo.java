@@ -25,16 +25,26 @@ public class ClientChannelInfo {
     private final LanguageCode language;
     private final int version;
     private volatile long lastUpdateTimestamp = System.currentTimeMillis();
+    private String envLabel;
 
     public ClientChannelInfo(Channel channel) {
-        this(channel, null, null, 0);
+        this(channel, null, null, 0, null);
     }
 
-    public ClientChannelInfo(Channel channel, String clientId, LanguageCode language, int version) {
+    public ClientChannelInfo(Channel channel, String clientId, LanguageCode language, int version, String envLabel) {
         this.channel = channel;
         this.clientId = clientId;
         this.language = language;
         this.version = version;
+        this.envLabel = envLabel;
+    }
+
+    public String getEnvLabel() {
+        return envLabel;
+    }
+
+    public void setEnvLabel(String envLabel) {
+        this.envLabel = envLabel;
     }
 
     public Channel getChannel() {

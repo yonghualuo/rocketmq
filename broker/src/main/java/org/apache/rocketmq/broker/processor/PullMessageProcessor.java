@@ -23,7 +23,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.FileRegion;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Set;
+
 import org.apache.rocketmq.broker.BrokerController;
+import org.apache.rocketmq.broker.client.ConsumerEnvInfo;
 import org.apache.rocketmq.broker.client.ConsumerGroupInfo;
 import org.apache.rocketmq.broker.filter.ConsumerFilterData;
 import org.apache.rocketmq.broker.filter.ConsumerFilterManager;
@@ -224,6 +227,9 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        // 获取该topic的env集
+        Set<String> envSet = this.brokerController.getConsumerManager().queryEnvConsumeByTopic(requestHeader.getTopic());
+
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
@@ -231,6 +237,10 @@ public class PullMessageProcessor implements NettyRequestProcessor {
         } else {
             messageFilter = new ExpressionMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
+        }
+        if (messageFilter != null && messageFilter instanceof ExpressionMessageFilter) {
+            ConsumerEnvInfo consumerEnvInfo = new ConsumerEnvInfo(requestHeader.getEnvLabel(), envSet);
+            ((ExpressionMessageFilter) messageFilter).setConsumerEnvInfo(consumerEnvInfo);
         }
 
         final GetMessageResult getMessageResult =

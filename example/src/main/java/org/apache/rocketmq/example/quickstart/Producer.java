@@ -50,16 +50,20 @@ public class Producer {
          */
         producer.start();
 
-        for (int i = 0; i < 1000; i++) {
+//        String[] envArr = new String[] {"dev", "dev.proj1", "dev.proj1.lyh", "dev.proj2"};
+        String[] envArr = new String[] {"dev.proj1", "dev.proj1.lyh", "dev.proj2"};
+
+        for (int i = 0; i < 3; i++) {
             try {
 
                 /*
                  * Create a message instance, specifying topic, tag and message body.
                  */
-                Message msg = new Message("TopicTest" /* Topic */,
+                Message msg = new Message("topicA" /* Topic */,
                     "TagA" /* Tag */,
                     ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
+                msg.putUserProperty("devops.env.label", envArr[i % 3]);
 
                 /*
                  * Call send message to deliver message to one of brokers.

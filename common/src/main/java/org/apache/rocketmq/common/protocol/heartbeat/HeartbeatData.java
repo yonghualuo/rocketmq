@@ -26,6 +26,7 @@ import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
 public class HeartbeatData extends RemotingSerializable {
     private String clientID;
+    private String envLabel;
     private Set<ProducerData> producerDataSet = new HashSet<ProducerData>();
     private Set<ConsumerData> consumerDataSet = new HashSet<ConsumerData>();
 
@@ -35,6 +36,14 @@ public class HeartbeatData extends RemotingSerializable {
 
     public void setClientID(String clientID) {
         this.clientID = clientID;
+    }
+
+    public String getEnvLabel() {
+        return envLabel;
+    }
+
+    public void setEnvLabel(String envLabel) {
+        this.envLabel = envLabel;
     }
 
     public Set<ProducerData> getProducerDataSet() {
@@ -55,7 +64,11 @@ public class HeartbeatData extends RemotingSerializable {
 
     @Override
     public String toString() {
-        return "HeartbeatData [clientID=" + clientID + ", producerDataSet=" + producerDataSet
-            + ", consumerDataSet=" + consumerDataSet + "]";
+        return "HeartbeatData{" +
+                "clientID='" + clientID + '\'' +
+                ", envLabel='" + envLabel + '\'' +
+                ", producerDataSet=" + producerDataSet +
+                ", consumerDataSet=" + consumerDataSet +
+                '}';
     }
 }

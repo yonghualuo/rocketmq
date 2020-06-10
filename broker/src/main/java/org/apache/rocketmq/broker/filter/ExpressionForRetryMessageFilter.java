@@ -77,6 +77,10 @@ public class ExpressionForRetryMessageFilter extends ExpressionMessageFilter {
             tempProperties = MessageDecoder.decodeProperties(msgBuffer);
         }
 
+        if (!isMatchedByEnv(tempProperties)) {
+            return false;
+        }
+
         Object ret = null;
         try {
             MessageEvaluationContext context = new MessageEvaluationContext(tempProperties);

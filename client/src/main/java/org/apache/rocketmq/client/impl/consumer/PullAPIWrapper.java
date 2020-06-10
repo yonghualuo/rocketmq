@@ -36,7 +36,9 @@ import org.apache.rocketmq.client.impl.factory.MQClientInstance;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.MQVersion;
 import org.apache.rocketmq.common.MixAll;
+import org.apache.rocketmq.common.constant.DevopsConstant;
 import org.apache.rocketmq.common.filter.ExpressionType;
+import org.apache.rocketmq.common.utils.CommonUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
@@ -179,6 +181,8 @@ public class PullAPIWrapper {
             }
 
             PullMessageRequestHeader requestHeader = new PullMessageRequestHeader();
+            // TODO
+            requestHeader.setEnvLabel(CommonUtils.getPodEnvVar(DevopsConstant.ENV_LABEL));
             requestHeader.setConsumerGroup(this.consumerGroup);
             requestHeader.setTopic(mq.getTopic());
             requestHeader.setQueueId(mq.getQueueId());

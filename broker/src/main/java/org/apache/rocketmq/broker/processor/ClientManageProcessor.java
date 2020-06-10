@@ -78,7 +78,8 @@ public class ClientManageProcessor implements NettyRequestProcessor {
             ctx.channel(),
             heartbeatData.getClientID(),
             request.getLanguage(),
-            request.getVersion()
+            request.getVersion(),
+            heartbeatData.getEnvLabel()
         );
 
         for (ConsumerData data : heartbeatData.getConsumerDataSet()) {
@@ -138,7 +139,8 @@ public class ClientManageProcessor implements NettyRequestProcessor {
             ctx.channel(),
             requestHeader.getClientID(),
             request.getLanguage(),
-            request.getVersion());
+            request.getVersion(),
+            requestHeader.getEnvLabel());
         {
             final String group = requestHeader.getProducerGroup();
             if (group != null) {

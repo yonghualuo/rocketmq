@@ -50,6 +50,7 @@ import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.admin.ConsumeStats;
 import org.apache.rocketmq.common.admin.TopicStatsTable;
+import org.apache.rocketmq.common.constant.DevopsConstant;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageBatch;
 import org.apache.rocketmq.common.message.MessageClientIDSetter;
@@ -138,6 +139,7 @@ import org.apache.rocketmq.common.protocol.heartbeat.HeartbeatData;
 import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.subscription.SubscriptionGroupConfig;
+import org.apache.rocketmq.common.utils.CommonUtils;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.remoting.InvokeCallback;
 import org.apache.rocketmq.remoting.RPCHook;
@@ -900,6 +902,7 @@ public class MQClientAPIImpl {
         requestHeader.setClientID(clientID);
         requestHeader.setProducerGroup(producerGroup);
         requestHeader.setConsumerGroup(consumerGroup);
+        requestHeader.setEnvLabel(CommonUtils.getPodEnvVar(DevopsConstant.ENV_LABEL));
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.UNREGISTER_CLIENT, requestHeader);
 
         RemotingCommand response = this.remotingClient.invokeSync(addr, request, timeoutMillis);
