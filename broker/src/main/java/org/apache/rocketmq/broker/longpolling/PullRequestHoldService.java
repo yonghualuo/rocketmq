@@ -133,6 +133,7 @@ public class PullRequestHoldService extends ServiceThread {
                         newestOffset = this.brokerController.getMessageStore().getMaxOffsetInQueue(topic, queueId);
                     }
 
+                    // 如果消息队列的最大偏移量大于待拉取偏移量
                     if (newestOffset > request.getPullFromThisOffset()) {
                         boolean match = request.getMessageFilter().isMatchedByConsumeQueue(tagsCode,
                             new ConsumeQueueExt.CqExtUnit(tagsCode, msgStoreTime, filterBitMap));
@@ -142,8 +143,7 @@ public class PullRequestHoldService extends ServiceThread {
                         }
 
                         /**
-                         * 如果消息队列的最大偏移量大于待拉取偏移量，如果消息匹配则调用executeRequestWhenWakeup将消息返回给消息拉取客户端
-                         * ，否则等待下一次尝试。
+                         * 如果消息匹配则调用executeRequestWhenWakeup将消息返回给消息拉取客户端, 否则等待下一次尝试。
                          */
                         if (match) {
                             try {
