@@ -47,9 +47,19 @@ import org.slf4j.Logger;
  */
 public abstract class RebalanceImpl {
     protected static final Logger log = ClientLogger.getLog();
+    /**
+     * 记录MessageQueue和 ProcessQueue的关系。
+     * MessageQueue可以简单地理解为ConsumeQueue的客户端实现；ProcessQueue是保存Pull消息的本地容器
+     */
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
+    /**
+     * Topic路由信息。保存Topic和MessageQueue的关系。
+     */
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
         new ConcurrentHashMap<String, Set<MessageQueue>>();
+    /**
+     * 真正的订阅关系，保存当前消费者组订阅了哪些Topic的哪些Tag.
+     */
     protected final ConcurrentMap<String /* topic */, SubscriptionData> subscriptionInner =
         new ConcurrentHashMap<String, SubscriptionData>();
     protected String consumerGroup;
@@ -139,6 +149,12 @@ public abstract class RebalanceImpl {
         return result;
     }
 
+    /**
+     * 为MessageQueue加锁
+     *
+     * @param mq
+     * @return
+     */
     public boolean lock(final MessageQueue mq) {
         FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
         if (findBrokerResult != null) {
@@ -289,7 +305,7 @@ public abstract class RebalanceImpl {
                     mqAll.addAll(mqSet);
 
                     /**
-                     *  对cidAll、mqAll排序，同一个消费组内看到的试图保持一致，确保同一个消费队列不会被多个消费者分配。
+                     *  对cidAll、mqAll排序，同一个消费组内看到的视图保持一致，确保同一个消费队列不会被多个消费者分配。
                      */
                     Collections.sort(mqAll);
                     Collections.sort(cidAll);
@@ -345,6 +361,14 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 在Rebalance中更新processQueue.
+     *
+     * @param topic
+     * @param mqSet
+     * @param isOrder
+     * @return
+     */
     private boolean updateProcessQueueTableInRebalance(final String topic, final Set<MessageQueue> mqSet,
         final boolean isOrder) {
         boolean changed = false;
@@ -392,7 +416,7 @@ public abstract class RebalanceImpl {
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
             /**
-             * 不包含说明是本次新增加的消息队列，首先从内存中移除该消息队列的消费进度，然后从磁盘中读取该消息队列的消费进度，创建PullRequest。
+             * 不包含, 说明是本次新增加的消息队列，首先从内存中移除该消息队列的消费进度，然后从磁盘中读取该消息队列的消费进度，创建PullRequest。
              */
             if (!this.processQueueTable.containsKey(mq)) {
                 /**
@@ -431,6 +455,13 @@ public abstract class RebalanceImpl {
         return changed;
     }
 
+    /**
+     * 通知Message发生变化
+     *
+     * @param topic
+     * @param mqAll
+     * @param mqDivided
+     */
     public abstract void messageQueueChanged(final String topic, final Set<MessageQueue> mqAll,
         final Set<MessageQueue> mqDivided);
 
@@ -448,6 +479,11 @@ public abstract class RebalanceImpl {
 
     public abstract long computePullFromWhere(final MessageQueue mq);
 
+    /**
+     * 执行消息拉取请求
+     *
+     * @param pullRequestList
+     */
     public abstract void dispatchPullRequest(final List<PullRequest> pullRequestList);
 
     public void removeProcessQueue(final MessageQueue mq) {

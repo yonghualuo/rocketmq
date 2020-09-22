@@ -63,11 +63,13 @@ public class MappedFile extends ReferenceResource {
      */
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
     /**
+     * 【DM中已写入的消息位置】
      * 当前该文件的写指针，从0开始（内存映射文件的写指针）。
      */
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
     //ADD BY ChenYang
     /**
+     * 【已经转存的消息位置】
      * 当前文件的提交指针，如果开启transientStorePoolEnable，则数据会存储在TransientStorePool中，
      * 然后提交到内存映射ByteBuffer总，再刷写到磁盘。
      */
@@ -81,10 +83,11 @@ public class MappedFile extends ReferenceResource {
      */
     protected int fileSize;
     /**
-     * 文件通道
+     * CommitLog映射文件的读写通道
      */
     protected FileChannel fileChannel;
     /**
+     * 配置Broker读写分离后，当存储消息流传到ByteBuffer时, 会优先写入writeBuffer.
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      * 堆内存ByteBuffer，如果不为空，数据首先将存储在该ByteBuffer中，然后提交到MappedFile对应的内存映射文件Buffer。
      */
@@ -99,7 +102,7 @@ public class MappedFile extends ReferenceResource {
     private long fileFromOffset;
     // 物理文件
     private File file;
-    // 物理文件对应的内存映射Buffer
+    // 物理文件对应的内存映射Buffer, PageCache
     private MappedByteBuffer mappedByteBuffer;
     // 文件最后一次内容写入时间。
     private volatile long storeTimestamp = 0;
@@ -342,9 +345,10 @@ public class MappedFile extends ReferenceResource {
                      * 因为上一次提交的数据就是进入到MappedByteBuffer中的数据；
                      * 如果writeBuffer为空，数据是直接进入到MappedByteBuffer，wrotePosition代表的是MappedByteBuffer中的指针
                      */
+                    // 读写分离
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
-                    } else {
+                    } else { // 非读写分离
                         this.mappedByteBuffer.force();
                     }
                 } catch (Throwable e) {

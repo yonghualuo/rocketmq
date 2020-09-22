@@ -42,9 +42,9 @@ public class HAConnection {
     private WriteSocketService writeSocketService;
     // HA Master网络写实现类
     private ReadSocketService readSocketService;
-    // 从服务器请求拉取数据的偏移量
+    // 表示slave请求同步的位点值
     private volatile long slaveRequestOffset = -1;
-    // 从服务器反馈已拉取完成的数据偏移量。
+    // 表示slave已经保存的位点值
     private volatile long slaveAckOffset = -1;
 
     public HAConnection(final HAService haService, final SocketChannel socketChannel) throws IOException {
@@ -86,6 +86,10 @@ public class HAConnection {
         return socketChannel;
     }
 
+    /**
+     * Master: 读取Slave发送的offset请求.
+     * Slave: 上报本地offset的请求.
+     */
     class ReadSocketService extends ServiceThread {
         // 网络读缓存区大小，默认为1M
         private static final int READ_MAX_BUFFER_SIZE = 1024 * 1024;
@@ -157,6 +161,11 @@ public class HAConnection {
             return ReadSocketService.class.getSimpleName();
         }
 
+        /**
+         * 接收Slave同步数据请求.
+         *
+         * @return
+         */
         private boolean processReadEvent() {
             int readSizeZeroTimes = 0;
 
@@ -207,6 +216,10 @@ public class HAConnection {
         }
     }
 
+    /**
+     * Master: 将CommitLog写入网络, 发送给Slave.
+     * Slave: 上报本地offset的请求.
+     */
     class WriteSocketService extends ServiceThread {
         private final Selector selector;
         private final SocketChannel socketChannel;
@@ -322,6 +335,7 @@ public class HAConnection {
                         this.byteBufferHeader.putInt(size);
                         this.byteBufferHeader.flip();
 
+                        // 传输数据到Slave
                         this.lastWriteOver = this.transferData();
                     } else {
 

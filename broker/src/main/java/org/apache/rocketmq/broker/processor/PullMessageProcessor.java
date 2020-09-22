@@ -286,6 +286,7 @@ public class PullMessageProcessor implements NettyRequestProcessor {
                     break;
             }
 
+            // slave读取开关配置
             if (this.brokerController.getBrokerConfig().isSlaveReadEnable()) {
                 // consume too slow ,redirect to another machine
                 if (getMessageResult.isSuggestPullingFromSlave()) {

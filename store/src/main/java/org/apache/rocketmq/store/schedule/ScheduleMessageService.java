@@ -310,12 +310,14 @@ public class ScheduleMessageService extends ConfigManager {
                             }
 
                             long now = System.currentTimeMillis();
+                            // 计算当前消息的真正投递时间
                             long deliverTimestamp = this.correctDeliverTimestamp(now, tagsCode);
 
                             nextOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
                             long countdown = deliverTimestamp - now;
 
+                            // 如果满足投递时间要求, 则重新发送消息到原始Topic中.
                             if (countdown <= 0) {
                                 // 根据消息物理偏移量与消息大小从commitlog文件中查找消息。
                                 MessageExt msgExt =

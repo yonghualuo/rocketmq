@@ -47,6 +47,10 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 包含Broker注册到Namesrv、Broker从Namesrv解绑、获取Topic配置信息、
+ * 获取消费者位点信息、获取延迟位点信息及订阅关系等.
+ */
 public class BrokerOuterAPI {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final RemotingClient remotingClient;

@@ -391,7 +391,7 @@ public abstract class NettyRemotingAbstract {
             channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture f) throws Exception {
-                    if (f.isSuccess()) {
+                    if (f.isSuccess()) { // 只要返回成功, 就会在回调方法operationComplete调用前释放
                         responseFuture.setSendRequestOK(true);
                         return;
                     } else {
@@ -401,7 +401,7 @@ public abstract class NettyRemotingAbstract {
                     // 异常时
                     responseTable.remove(opaque);
                     responseFuture.setCause(f.cause());
-                    responseFuture.putResponse(null);
+                    responseFuture.putResponse(null); // 释放锁
                     log.warn("send a request command to channel <" + addr + "> failed.");
                 }
             });

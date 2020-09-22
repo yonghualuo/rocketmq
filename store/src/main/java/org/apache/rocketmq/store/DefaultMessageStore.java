@@ -486,7 +486,7 @@ public class DefaultMessageStore implements MessageStore {
         long maxOffset = 0;
 
         GetMessageResult getResult = new GetMessageResult();
-        // 当前主服务器commitlog文件最大偏移量
+        // 当前主服务器commitlog文件最大偏移量, 表示当前Master Broker存储的所有消息的最大物理位点
         final long maxOffsetPy = this.commitLog.getMaxOffset();
 
         ConsumeQueue consumeQueue = findConsumeQueue(topic, queueId);
@@ -603,6 +603,9 @@ public class DefaultMessageStore implements MessageStore {
                         // 消息常驻内存的大小，超过该大小，RocketMQ会将旧的消息置换回磁盘。
                         long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE
                             * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
+                        /**
+                         * diff > memory, 表示没有拉取的消息比分配的内存大, 说明此时Master Broker内存繁忙，应选择从Slave拉取消息
+                         */
                         getResult.setSuggestPullingFromSlave(diff > memory);
                     } finally {
 

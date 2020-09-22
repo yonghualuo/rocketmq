@@ -664,7 +664,7 @@ public class CommitLog {
     }
 
     /**
-     * 将数据从内存刷写到磁盘文件
+     * 唤醒刷盘线程, 将数据从内存刷写到磁盘文件
      *
      * @param result
      * @param putMessageResult
@@ -697,6 +697,13 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 处理同步复制
+     *
+     * @param result
+     * @param putMessageResult
+     * @param messageExt
+     */
     public void handleHA(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
@@ -705,6 +712,7 @@ public class CommitLog {
                 if (service.isSlaveOK(result.getWroteOffset() + result.getWroteBytes())) {
                     GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes());
                     service.putRequest(request);
+                    // 唤醒所有全部的Slave同步
                     service.getWaitNotifyObject().wakeupAll();
                     boolean flushOK =
                         request.waitForFlush(this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
@@ -940,6 +948,10 @@ public class CommitLog {
         protected static final int RETRY_TIMES_OVER = 10;
     }
 
+    /**
+     * 异步转存服务
+     * 将 DM 中的数据再次存储到 Page Cache中，以供异步刷盘服务将Page Cache刷到磁盘中
+     */
     class CommitRealTimeService extends FlushCommitLogService {
 
         private long lastCommitTimestamp = 0;
@@ -953,19 +965,20 @@ public class CommitLog {
         public void run() {
             CommitLog.log.info(this.getServiceName() + " service started");
             while (!this.isStopped()) {
-                // 线程间隔时间，默认200ms
+                // 转存操作线程两次执行操作的时间间隔，默认200ms
                 int interval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitIntervalCommitLog();
 
-                // 一次提交任务至少包含页数
+                // 一次提交任务最少包含页数
                 int commitDataLeastPages = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogLeastPages();
 
-                // 两次真实提交最大间隔
+                // 两次转存操作的最长间隔时间
                 int commitDataThoroughInterval =
                     CommitLog.this.defaultMessageStore.getMessageStoreConfig().getCommitCommitLogThoroughInterval();
 
                 long begin = System.currentTimeMillis();
                 if (begin >= (this.lastCommitTimestamp + commitDataThoroughInterval)) {
                     this.lastCommitTimestamp = begin;
+                    // 继续将上次未完成的数据刷盘
                     commitDataLeastPages = 0;
                 }
 
@@ -977,6 +990,7 @@ public class CommitLog {
                         // result = false means some data committed.
                         this.lastCommitTimestamp = end;
                         //now wake up flush thread.
+                        // 唤醒刷盘线程执行刷盘操作
                         flushCommitLogService.wakeup();
                     }
 
@@ -998,6 +1012,9 @@ public class CommitLog {
         }
     }
 
+    /**
+     * 异步刷盘服务
+     */
     class FlushRealTimeService extends FlushCommitLogService {
         private long lastFlushTimestamp = 0;
         private long printTimes = 0;
@@ -1027,9 +1044,10 @@ public class CommitLog {
                 }
 
                 try {
+                    // 定时刷盘
                     if (flushCommitLogTimed) {
                         Thread.sleep(interval);
-                    } else {
+                    } else { // 实时刷盘
                         this.waitForRunning(interval);
                     }
 
@@ -1038,9 +1056,11 @@ public class CommitLog {
                     }
 
                     long begin = System.currentTimeMillis();
+                    // 执行刷盘
                     CommitLog.this.mappedFileQueue.flush(flushPhysicQueueLeastPages);
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
                     if (storeTimestamp > 0) {
+                        // 记录Checkpoint信息
                         CommitLog.this.defaultMessageStore.getStoreCheckpoint().setPhysicMsgTimestamp(storeTimestamp);
                     }
                     long past = System.currentTimeMillis() - begin;
@@ -1147,13 +1167,15 @@ public class CommitLog {
                         // two times the flush
                         boolean flushOK = false;
                         for (int i = 0; i < 2 && !flushOK; i++) {
+                            // 判断当前刷盘请求的消息是否已经刷盘
                             flushOK = CommitLog.this.mappedFileQueue.getFlushedWhere() >= req.getNextOffset();
 
                             if (!flushOK) {
+                                // 执行刷盘
                                 CommitLog.this.mappedFileQueue.flush(0);
                             }
                         }
-
+                        // 唤醒存储消息线程
                         req.wakeupCustomer(flushOK);
                     }
 

@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Slave从Master同步CommitLog数据
  * 主从同步核心实现类。
  */
 public class HAService {
@@ -89,9 +90,13 @@ public class HAService {
     }
 
     public void notifyTransferSome(final long offset) {
+        /**
+         * 判断Slave同步的位点是否大于Master标记的已同步位点.
+         */
         for (long value = this.push2SlaveMaxOffset.get(); offset > value; ) {
             boolean ok = this.push2SlaveMaxOffset.compareAndSet(value, offset);
             if (ok) {
+                // 通知同步复制服务
                 this.groupTransferService.notifyTransferSome();
                 break;
             } else {
@@ -259,7 +264,7 @@ public class HAService {
     }
 
     /**
-     * 负责当主从同步复制结束后通知由于等待HA同步结果而阻塞的消息发送者线程。
+     * 负责当主从同步复制结束后, 通知由于等待HA同步结果而阻塞的消息发送者线程。
      *
      * GroupTransferService Service
      */
@@ -340,6 +345,9 @@ public class HAService {
         }
     }
 
+    /**
+     * 主从同步Slave端的核心实现类
+     */
     class HAClient extends ServiceThread {
         // Socket读缓存区大小。
         private static final int READ_MAX_BUFFER_SIZE = 1024 * 1024 * 4;
@@ -460,6 +468,7 @@ public class HAService {
                         lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
                         // 重置读取到0字节的次数，并更新最后一次写入时间戳。
                         readSizeZeroTimes = 0;
+                        // 将读取到的所有消息全部追加到消息内存映射文件中
                         boolean result = this.dispatchReadRequest();
                         if (!result) {
                             log.error("HAClient, dispatchReadRequest error");
